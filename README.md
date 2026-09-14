@@ -37,9 +37,11 @@ GrooveBox is a free, open-source desktop music player that plays your local file
 | | |
 |---|---|
 | ![First-run setup](docs/screenshot-onboarding.png) | ![Library](docs/screenshot-home.png) |
-| ![Spotify + YouTube search](docs/screenshot-search.png) | ![Full player with EQ and visualizer](docs/screenshot-player.png) |
-| ![Playing Next / History queue](docs/screenshot-queue.png) | ![Playlist](docs/screenshot-playlist.png) |
-| ![Top Ranked / Liked](docs/screenshot-topranked.png) | ![Always-on-top mini player](docs/screenshot-miniplayer.png) |
+| ![Spotify + YouTube search](docs/screenshot-search.png) | ![Full player streaming a Spotify+YouTube match](docs/screenshot-player.png) |
+| ![Playing Next / History queue](docs/screenshot-queue.png) | ![Liked songs](docs/screenshot-liked.png) |
+| ![Top Ranked](docs/screenshot-topranked.png) | ![Always-on-top mini player](docs/screenshot-miniplayer.png) |
+| ![Custom playlist cover in the sidebar](docs/screenshot-sidebar-cover.png) | ![Tracks without their own art falling back to the playlist cover](docs/screenshot-playlist-fallback.png) |
+| ![Mini player showing the playlist cover fallback](docs/screenshot-miniplayer-cover.png) | ![Online mode toggle](docs/screenshot-online.png) |
 
 ## Getting your own API keys
 
