@@ -16,7 +16,7 @@
 
 GrooveBox is a free, open-source desktop music player that plays your local files, Google Drive music, and lets you search **Spotify and YouTube Music from the same window** — with a translucent glass UI, visualizer, synced lyrics, playlists, equalizer, likes & ranking, and more.
 
-<!-- ![GrooveBox desktop walkthrough](docs/desktop-demo.gif) -->
+![GrooveBox desktop walkthrough](docs/desktop-demo.gif)
 
 ## Features
 
@@ -36,7 +36,10 @@ GrooveBox is a free, open-source desktop music player that plays your local file
 
 ## Screenshots
 
-*(coming soon — screenshots are being captured from a live walkthrough)*
+| | |
+|---|---|
+| ![First-run setup](docs/screenshot-onboarding.png) | ![Library](docs/screenshot-home.png) |
+| ![Spotify + YouTube search](docs/screenshot-search.png) | ![Full player with EQ](docs/screenshot-player.png) |
 
 ## Getting your own API keys
 

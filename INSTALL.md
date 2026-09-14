@@ -45,7 +45,7 @@ You should see version numbers like `v20.x.x` and `10.x.x`. If you do, you're re
 
 If you have Git installed:
 ```bash
-git clone https://github.com/YOUR_USERNAME/groovebox.git
+git clone https://github.com/akshit1503/groovebox-desktop.git
 cd groovebox
 ```
 
