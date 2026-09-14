@@ -687,6 +687,32 @@ body{background:var(--bg0);color:var(--text1);font-family:var(--font);overflow:h
   </div>
 </div>
 
+<!-- FIRST-RUN ONBOARDING -->
+<div class="overlay" id="onboarding-modal">
+  <div class="modal" style="width:460px">
+    <h2>🎧 Welcome to GrooveBox</h2>
+    <p>Connect Spotify and YouTube Music to search and play from both catalogs in one place — or skip this and add keys later from Settings.</p>
+    <div class="m-field">
+      <label>Spotify Client ID</label>
+      <input id="ob-spotify-clientid" placeholder="Client ID">
+    </div>
+    <div class="m-field">
+      <label>Spotify Client Secret</label>
+      <input id="ob-spotify-clientsecret" placeholder="Client Secret" type="password">
+      <div class="m-hint">developer.spotify.com/dashboard → Create app → Client ID &amp; Client Secret</div>
+    </div>
+    <div class="m-field">
+      <label>YouTube Data API Key</label>
+      <input id="ob-yt-apikey" placeholder="AIzaSy… (from Google Cloud Console)">
+      <div class="m-hint">console.cloud.google.com → Enable YouTube Data API v3 → Credentials → Create API Key</div>
+    </div>
+    <div class="m-acts">
+      <button class="m-btn m-btn-s" onclick="skipOnboarding()">Skip for now</button>
+      <button class="m-btn m-btn-p" onclick="saveOnboarding()">Save &amp; Continue →</button>
+    </div>
+  </div>
+</div>
+
 <!-- FEEDBACK MODAL -->
 <div class="overlay" id="fb-modal">
   <div class="modal" style="width:420px">

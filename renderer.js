@@ -41,6 +41,7 @@ window.addEventListener('DOMContentLoaded', async()=>{
   renderSidebar(); filterAndRender(); bindKeys();
   initMediaSession();
   initThumbar();
+  await maybeShowOnboarding();
   GB.onMiniCmd(cmd=>{
     if(cmd==='toggle') togglePlay();
     else if(cmd==='next') playNext();
@@ -49,6 +50,33 @@ window.addEventListener('DOMContentLoaded', async()=>{
     else if(cmd.startsWith('seek:')){const p=parseFloat(cmd.split(':')[1]);if(aud.duration) aud.currentTime=(p/100)*aud.duration;}
   });
 });
+
+// ═══════ FIRST-RUN ONBOARDING ═══════
+// Shown once so a new install isn't a blank player with no idea Spotify/
+// YouTube need their own free API keys — but never blocks use of the app,
+// since local-file playback needs none of this.
+async function maybeShowOnboarding(){
+  const done=await GB.storeGet('onboardingComplete');
+  if(done) return;
+  document.getElementById('onboarding-modal').classList.add('show');
+}
+async function skipOnboarding(){
+  await GB.storeSet('onboardingComplete',true);
+  document.getElementById('onboarding-modal').classList.remove('show');
+}
+async function saveOnboarding(){
+  const clientId=(document.getElementById('ob-spotify-clientid')?.value||'').trim();
+  const clientSecret=(document.getElementById('ob-spotify-clientsecret')?.value||'').trim();
+  const ytKey=(document.getElementById('ob-yt-apikey')?.value||'').trim();
+  if(clientId&&clientSecret){
+    await GB.storeSet('spotifyClientId',clientId);
+    await GB.storeSet('spotifyClientSecret',clientSecret);
+  }
+  if(ytKey) await GB.storeSet('ytApiKey',ytKey);
+  await GB.storeSet('onboardingComplete',true);
+  document.getElementById('onboarding-modal').classList.remove('show');
+  toast(clientId||ytKey ? '✅ Keys saved — you\'re all set' : '✅ Saved');
+}
 
 async function loadPersisted(){
   const sv=await GB.storeGet('settings'); if(sv) {settings={...settings,...sv}; applySettings();}
