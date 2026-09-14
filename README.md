@@ -24,7 +24,7 @@ GrooveBox is a free, open-source desktop music player that plays your local file
 | 🎛 **10-Band EQ** | Real-time equalizer with reset |
 | ♥ **Likes & Ranking** | Cumulative likes, medal-ranked Top Ranked view |
 | 🪟 **Mini Player** | Always-on-top compact player with visualizer |
-| 📋 **Playlists** | Unlimited, right-click to add |
+| 📋 **Playlists** | Unlimited, right-click to add, custom cover art with automatic fallback for tracks that don't have their own |
 | 📜 **Queue & History** | Playing Next queue plus play history, in a side panel |
 | ☁ **Google Drive** | Paste folder link, stream instantly — no sign-in required |
 | 💾 **Persistent Library** | Add once, always there |
