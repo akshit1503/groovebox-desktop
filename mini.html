@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: localfile:; media-src 'self' localfile: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{--acc:#a78bfa;--pink:#f472b6;--bg0:#0a0a0f;--bg1:#141420;--bg2:#1a1a2a;--text1:#e2e0ff;--text2:#7070a0;--border:#1e1e30}
+html,body{width:380px;height:108px;overflow:hidden;background:transparent}
+body{
+  background:var(--bg0);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  user-select:none;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 10px 30px rgba(0,0,0,.5);
+}
+/* ── True liquid glass: a slowly-spinning colour gradient, warped by a
+   procedural SVG feTurbulence/feDisplacementMap filter (organic noise,
+   not an animated attribute — animating the *gradient* instead of the
+   turbulence itself keeps this cheap even though the window is always
+   floating on top). A frosted pane sits above it so the title/controls
+   stay legible while the liquid colour still bleeds through softly. */
+#mini-ambient{position:absolute;inset:-20px;z-index:-2;filter:url(#liquid-glass);border-radius:14px;overflow:hidden}
+#mini-ambient-grad{position:absolute;inset:-40px;background:conic-gradient(from 0deg at 50% 50%,var(--acc2),var(--pink),var(--teal),var(--acc),var(--acc2));animation:miniSpin 10s linear infinite;will-change:transform}
+@keyframes miniSpin{to{transform:rotate(1turn)}}
+@media (prefers-reduced-motion: reduce){#mini-ambient-grad{animation:none!important}}
+#mini-glass-pane{position:absolute;inset:0;z-index:-1;border-radius:14px;background:rgba(18,16,30,.46);backdrop-filter:blur(16px) saturate(170%);-webkit-backdrop-filter:blur(16px) saturate(170%)}
+/* Full body is draggable except interactive areas */
+#drag-overlay{
+  position:absolute;inset:0;
+  -webkit-app-region:drag;
+  border-radius:14px;
+  pointer-events:none; /* allows clicks through to buttons */
+  z-index:0;
+}
+#main{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px 4px;flex:1;
+  position:relative;z-index:1;
+}
+/* art */
+#art{
+  width:52px;height:52px;border-radius:8px;
+  background:rgba(255,255,255,.06);flex-shrink:0;overflow:hidden;
+  position:relative;border:1px solid rgba(255,255,255,.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+  cursor:pointer;
+  -webkit-app-region:no-drag;
+}
+#art-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* Fallback "waterfall" bar visualiser for tracks with no embedded art —
+   pure CSS keyframe animation, no canvas/JS redraw loop, so unlike the
+   old per-frame visualiser this literally cannot lag regardless of
+   system load. Bars pause when playback is paused. */
+#art-vis{position:absolute;inset:0;display:none;align-items:flex-end;justify-content:center;gap:3px;padding:11px 0 9px;background:linear-gradient(160deg,rgba(167,139,250,.3),rgba(244,114,182,.16))}
+.art-bar{width:4px;border-radius:2px;background:linear-gradient(180deg,var(--pink),var(--acc));animation:artbar 1.1s ease-in-out infinite;transform-origin:bottom;height:20%}
+.art-bar:nth-child(1){animation-duration:.85s;animation-delay:-.5s}
+.art-bar:nth-child(2){animation-duration:1.25s;animation-delay:-.15s}
+.art-bar:nth-child(3){animation-duration:.75s;animation-delay:-.85s}
+.art-bar:nth-child(4){animation-duration:1.05s;animation-delay:-.35s}
+.art-bar:nth-child(5){animation-duration:.95s;animation-delay:-.05s}
+#art-vis.paused .art-bar{animation-play-state:paused;height:15%}
+@keyframes artbar{0%,100%{height:18%}50%{height:88%}}
+/* info */
+#info{flex:1;min-width:0;-webkit-app-region:no-drag}
+#title{font-size:12px;font-weight:700;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em;max-width:160px}
+#sub{font-size:10px;color:var(--text2);margin-top:1px;display:flex;align-items:center;gap:5px}
+#qual-badge{font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(167,139,250,.15);color:var(--acc);border:1px solid rgba(167,139,250,.25);font-family:'Consolas','Courier New',monospace}
+/* controls */
+#ctrls{display:flex;align-items:center;gap:2px;-webkit-app-region:no-drag}
+.btn{background:none;border:none;color:var(--text2);cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .12s}
+.btn:hover{color:var(--text1);background:rgba(255,255,255,.08)}
+.btn svg{width:14px;height:14px}
+#pp{background:linear-gradient(155deg,rgba(255,255,255,.55) 0%,rgba(167,139,250,.85) 45%,rgba(244,114,182,.85) 100%);border:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -5px 9px -4px rgba(124,58,237,.7);color:#fff;width:34px;height:34px;border-radius:50%}
+#pp:hover{filter:brightness(1.06)}
+/* window buttons — top right, always on top */
+#winbtns{
+  position:absolute;top:7px;right:9px;
+  display:flex;gap:5px;
+  z-index:10;
+  -webkit-app-region:no-drag;
+}
+.wbtn{
+  width:16px;height:16px;border-radius:50%;
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:0; /* hide text by default */
+  transition:all .15s;
+  flex-shrink:0;
+}
+.wbtn:hover{font-size:9px;}
+#wbtn-expand{background:#30d158;color:#000}
+#wbtn-close{background:#ff453a;color:#fff}
+/* progress */
+#prog-wrap{
+  padding:0 12px 8px;
+  -webkit-app-region:no-drag;
+  display:flex;align-items:center;gap:6px;
+  flex-shrink:0;
+  position:relative;z-index:1;
+}
+#t1{font-size:9px;color:var(--text2);font-family:'Consolas','Courier New',monospace;min-width:28px}
+#t2{font-size:9px;color:var(--text2);font-family:'Consolas','Courier New',monospace;min-width:28px;text-align:right}
+#prog-track{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;cursor:pointer;position:relative;overflow:hidden}
+#prog-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--pink));border-radius:2px;width:0%;transition:width .4s linear}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="liquid-glass" x="-30%" y="-30%" width="160%" height="160%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="7" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="26" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+<div id="mini-ambient"><div id="mini-ambient-grad"></div></div>
+<div id="mini-glass-pane"></div>
+
+<!-- Invisible full-body drag region (pointer-events:none so buttons still work) -->
+<div id="drag-overlay"></div>
+
+<!-- Window control dots -->
+<div id="winbtns">
+  <button class="wbtn" id="wbtn-expand" title="Expand to full player" onclick="expandPlayer()">↗</button>
+  <button class="wbtn" id="wbtn-close"  title="Close mini player"    onclick="closeMini()">✕</button>
+</div>
+
+<div id="main">
+  <!-- Static album art, or the GrooveBox mark when a track has none —
+       no canvas visualiser here (it read as laggy/janky in a window
+       this small and floating on top of everything else). -->
+  <div id="art" onclick="expandPlayer()">
+    <img id="art-img" alt="" style="display:none">
+    <div id="art-vis"><span class="art-bar"></span><span class="art-bar"></span><span class="art-bar"></span><span class="art-bar"></span><span class="art-bar"></span></div>
+  </div>
+
+  <div id="info">
+    <div id="title">Nothing playing</div>
+    <div id="sub">
+      <span id="src">—</span>
+      <span id="qual-badge" style="display:none"></span>
+    </div>
+  </div>
+
+  <div id="ctrls">
+    <button class="btn" title="Previous" onclick="cmd('prev')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <polygon points="19 20 9 12 19 4"/><line x1="5" y1="19" x2="5" y2="5"/>
+      </svg>
+    </button>
+    <button class="btn" id="pp" title="Play/Pause" onclick="cmd('toggle')">
+      <svg id="pp-svg" fill="currentColor" viewBox="0 0 24 24">
+        <polygon points="5 3 19 12 5 21"/>
+      </svg>
+    </button>
+    <button class="btn" title="Next" onclick="cmd('next')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <polygon points="5 4 15 12 5 20"/><line x1="19" y1="5" x2="19" y2="19"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<div id="prog-wrap">
+  <span id="t1">0:00</span>
+  <div id="prog-track" onclick="seekMini(event)">
+    <div id="prog-fill"></div>
+  </div>
+  <span id="t2">0:00</span>
+</div>
+
+<script>
+// ── Safe IPC calls — wait for GB to be ready ──────────────────────
+function cmd(c) {
+  try { window.GB.sendMiniCmd(c); } catch(e) {}
+}
+
+function seekMini(e) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
+  try { window.GB.sendMiniCmd('seek:' + pct); } catch(e) {}
+}
+
+// Close: use ipcRenderer directly via GB bridge
+function closeMini() {
+  try { window.GB.closeMini(); } catch(e) {
+    // fallback
+    try { window.close(); } catch(e2) {}
+  }
+}
+
+// Expand: close mini → main window shows (handled in main.js on 'closed')
+function expandPlayer() {
+  try { window.GB.closeMini(); } catch(e) {
+    try { window.close(); } catch(e2) {}
+  }
+}
+
+// ── State sync ────────────────────────────────────────────────────
+let lastArtSrc = null;
+window.GB.onPlayerState(s => {
+  document.getElementById('title').textContent = s.title || 'Nothing playing';
+  document.getElementById('src').textContent   = s.sub   || '—';
+
+  const qb = document.getElementById('qual-badge');
+  if (s.quality) { qb.textContent = s.quality; qb.style.display = 'inline'; }
+  else qb.style.display = 'none';
+
+  document.getElementById('t1').textContent = s.timeCur || '0:00';
+  document.getElementById('t2').textContent = s.timeTot || '0:00';
+  document.getElementById('prog-fill').style.width = (s.pct || 0) + '%';
+
+  document.getElementById('pp-svg').innerHTML = s.playing
+    ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+    : '<polygon points="5 3 19 12 5 21"/>';
+
+  // Real album art when the track has it; otherwise a lightweight CSS
+  // bar visualiser (no laggy canvas redraw) instead of a static logo.
+  // The renderer only includes `image` in the message when it actually
+  // changes (it can be a sizeable data: URI, and this fires on every
+  // timeupdate tick) — an absent key here just means "no change".
+  if ('image' in s) {
+    const img = document.getElementById('art-img');
+    const vis = document.getElementById('art-vis');
+    if (s.image) {
+      lastArtSrc = s.image;
+      img.onerror = () => { img.onerror = null; img.style.display = 'none'; vis.style.display = 'flex'; lastArtSrc = null; };
+      img.onload  = () => { img.style.display = 'block'; vis.style.display = 'none'; };
+      img.src = s.image;
+    } else {
+      lastArtSrc = null;
+      img.style.display = 'none';
+      vis.style.display = 'flex';
+    }
+  }
+  document.getElementById('art-vis').classList.toggle('paused', !s.playing);
+});
+</script>
+</body>
+</html>

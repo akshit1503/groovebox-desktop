@@ -1,0 +1,77 @@
+{
+  "name": "groovebox",
+  "version": "3.2.0",
+  "description": "Advanced music player with Google Drive, playlists, likes, lyrics & persistent library",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "build:linux": "electron-builder --linux --x64",
+    "build:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.groovebox.app",
+    "productName": "GrooveBox",
+    "copyright": "Copyright © 2025 Akshit Singh",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "mini.html",
+      "assets/**",
+      "node_modules/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "Audio"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "public.app-category.music"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GrooveBox"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "music-metadata": "^11.15.0"
+  }
+}

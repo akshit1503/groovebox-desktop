@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: data: localfile:; media-src 'self' https: localfile: blob:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
+<title>GrooveBox</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --bg0:#08080f;--bg1:#0f0f1a;--bg2:#141420;--bg3:#1a1a2a;--bg4:#202030;--bg5:#2a2a3a;
+  --acc:#a78bfa;--acc2:#7c3aed;--pink:#f472b6;--teal:#2dd4bf;--amber:#fbbf24;--green:#34d399;--red:#f87171;
+  --text1:#e2e0ff;--text2:#8080a8;--text3:#4a4a6a;--border:#1e1e2e;
+  --font:'Syne',sans-serif;--mono:'DM Mono',monospace;--r:8px;--r-lg:14px;--r-xl:20px;
+  /* Liquid glass surfaces — one blur boundary per major panel; nested
+     cards inside an already-blurred panel just use flat translucency
+     (var(--glass-fill)) instead of their own backdrop-filter, so blur
+     cost doesn't stack layer on layer. */
+  --glass-bg:rgba(18,16,30,.5);--glass-bg-2:rgba(22,19,36,.62);
+  --glass-bg-opaque:rgb(13,11,22);
+  --glass-fill:rgba(255,255,255,.045);--glass-fill-2:rgba(255,255,255,.07);
+  --glass-border:rgba(255,255,255,.10);--glass-hi:rgba(255,255,255,.16);
+  --glass-blur:26px;--glass-sat:170%;
+}
+body{background:var(--bg0);color:var(--text1);font-family:var(--font);overflow:hidden;user-select:none;height:100vh;display:flex;flex-direction:column;position:relative}
+
+/* ── AMBIENT LIQUID BACKGROUND ── */
+/* Slow-drifting colour blobs the whole app's glass panels blur — this
+   is what makes the frosted panels actually read as "glass" instead of
+   flat translucent grey. GPU-cheap: only `transform` is animated. */
+#bg-ambient{position:fixed;inset:0;z-index:-1;overflow:hidden;background:var(--bg0)}
+.bg-blob{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}
+.bg-blob-1{width:56vw;height:56vw;top:-20vw;left:-14vw;background:radial-gradient(circle,var(--acc2) 0%,transparent 70%);opacity:.5;animation:blob1 38s ease-in-out infinite}
+.bg-blob-2{width:48vw;height:48vw;bottom:-18vw;right:-12vw;background:radial-gradient(circle,var(--pink) 0%,transparent 70%);opacity:.4;animation:blob2 44s ease-in-out infinite}
+.bg-blob-3{width:42vw;height:42vw;top:28vh;right:8vw;background:radial-gradient(circle,var(--teal) 0%,transparent 70%);opacity:.32;animation:blob3 50s ease-in-out infinite}
+.bg-blob-4{width:38vw;height:38vw;bottom:10vh;left:20vw;background:radial-gradient(circle,var(--acc) 0%,transparent 70%);opacity:.3;animation:blob4 34s ease-in-out infinite}
+@keyframes blob1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(9vw,8vh) scale(1.12)}}
+@keyframes blob2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-7vw,-9vh) scale(1.08)}}
+@keyframes blob3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-8vw,7vh) scale(.92)}}
+@keyframes blob4{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,-6vh) scale(1.1)}}
+@media (prefers-reduced-motion: reduce){.bg-blob{animation:none!important}}
+
+/* ── GLASS VARIANTS ──────────────────────────────────────────────
+   .glass-frost  heavy blur+saturate, neutral — big stable panels
+   .glass-clear  light blur, very transparent — thin overlay bars
+   .glass-tint-* frosted glass with a colour cast — feature panels
+   .glass-spec   specular/glossy raised glass — buttons, pills
+   .glass-grain  frosted glass + subtle noise — modals, menus
+   .glass-liquid true refractive distortion (SVG feDisplacementMap)
+                 — the mini-player, the one place it's worth the cost */
+.glass-frost{background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat))}
+.glass-clear{background:rgba(255,255,255,.03);backdrop-filter:blur(10px) saturate(140%);-webkit-backdrop-filter:blur(10px) saturate(140%)}
+.glass-tint-purple{background:rgba(124,58,237,.16);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border:1px solid rgba(167,139,250,.22)}
+.glass-tint-teal{background:rgba(20,184,166,.12);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border:1px solid rgba(45,212,191,.22)}
+.glass-tint-pink{background:rgba(219,39,119,.13);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border:1px solid rgba(244,114,182,.22)}
+.glass-spec{position:relative;background:linear-gradient(165deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 40%);border:1px solid var(--glass-hi);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -6px 10px -6px rgba(0,0,0,.4),0 4px 18px rgba(0,0,0,.35)}
+.glass-grain{position:relative;isolation:isolate}
+.glass-grain::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");border-radius:inherit;z-index:1}
+
+/* ── TITLEBAR ── */
+#titlebar{height:42px;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));display:flex;align-items:center;padding:0 14px;-webkit-app-region:drag;flex-shrink:0;gap:10px;border-bottom:1px solid var(--glass-border);box-shadow:inset 0 -1px 0 var(--glass-hi)}
+.tb-logo{display:flex;align-items:center;gap:7px}
+.tb-logo img{width:20px;height:20px;border-radius:4px}
+.tb-logo-text{font-size:14px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(135deg,var(--acc),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.tb-ver{font-size:9px;color:var(--text3);border:1px solid var(--glass-border);padding:2px 6px;border-radius:10px;font-family:var(--mono)}
+#tb-qual{font-family:var(--mono);font-size:9px;padding:2px 8px;background:var(--glass-fill);border:1px solid rgba(45,212,191,.3);border-radius:10px;color:var(--teal);-webkit-app-region:no-drag;letter-spacing:.04em}
+#tb-space{flex:1}
+#tb-online{-webkit-app-region:no-drag;display:flex;align-items:center;gap:6px;background:var(--glass-fill);border:1px solid var(--glass-border);border-radius:12px;padding:3px 10px;font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--text2);cursor:pointer;letter-spacing:.06em;transition:all .15s;height:22px}
+#tb-online:hover{border-color:var(--acc);color:var(--text1)}
+#tb-online-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);transition:all .18s}
+#tb-online.online{border-color:rgba(52,211,153,.35);color:var(--green);background:rgba(52,211,153,.08)}
+#tb-online.online #tb-online-dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+#tb-online.offline #tb-online-dot{background:var(--text3)}
+/* Google profile pill */
+#tb-user{-webkit-app-region:no-drag;display:none;align-items:center;gap:7px;background:var(--glass-fill-2);border:1px solid var(--glass-border);border-radius:20px;padding:3px 10px 3px 4px;cursor:pointer;transition:border-color .15s}
+#tb-user:hover{border-color:var(--acc)}
+#tb-avatar{width:24px;height:24px;border-radius:50%;object-fit:cover}
+#tb-uname{font-size:11px;font-weight:600;color:var(--text1);max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tb-signin{-webkit-app-region:no-drag;font-size:11px;padding:4px 12px;background:var(--acc);color:#fff;border:none;border-radius:12px;cursor:pointer;font-weight:700;transition:all .15s}
+#tb-signin:hover{background:var(--acc2)}
+.wbtn{-webkit-app-region:no-drag;width:29px;height:29px;border:none;background:transparent;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:13.5px;transition:all .12s}
+.wbtn:hover{background:var(--glass-fill-2);color:var(--text1)}
+#wbtn-close:hover{background:#c0392b;color:#fff}
+
+/* ── LAYOUT ── */
+#body{display:flex;flex:1;overflow:hidden;position:relative}
+
+/* ── SIDEBAR ── */
+/* Collapses to an icon-only rail and expands as a hover overlay on top
+   of the main content (doesn't push/reflow it) — the spacer below
+   reserves the rail's width in the actual flex layout; #sidebar itself
+   is fixed and just grows over everything else when hovered. */
+#sidebar-spacer{width:64px;flex-shrink:0}
+#sidebar{position:fixed;top:42px;left:0;bottom:88px;width:64px;z-index:35;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));border-right:1px solid var(--glass-border);box-shadow:inset -1px 0 0 var(--glass-hi),4px 0 24px rgba(0,0,0,.25);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:width .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s}
+#sidebar:hover{width:218px;box-shadow:inset -1px 0 0 var(--glass-hi),8px 0 40px rgba(0,0,0,.4)}
+#sidebar .sb-item,#sidebar .sb-act{overflow:hidden;white-space:nowrap}
+/* Collapsed: shrink the label text to nothing (font-size:0 makes the
+   raw text node zero-width without needing to wrap it in a span) and
+   centre the icon in the narrow rail. The icon itself is unaffected —
+   its size comes from the <svg width/height>, not from font-size. */
+#sidebar:not(:hover) .sb-item,#sidebar:not(:hover) .sb-act{font-size:0;justify-content:center;padding-left:0;padding-right:0;gap:0}
+#sidebar:not(:hover) .sb-badge{display:none}
+/* Playlist rows are JS-rendered with the label in a <span style="flex:1">
+   (unlike nav items, which are raw text) — flex:1 grabs the row's full
+   width regardless of justify-content, which is what was pushing the
+   icon off-centre. Hiding the span outright fixes it the same way
+   font-size:0 does for the plain-text items above. */
+#sidebar:not(:hover) .sb-item>span{display:none}
+#sb-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:4px}
+#sb-scroll::-webkit-scrollbar{width:3px}
+#sb-scroll::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:2px}
+.sb-label{padding:14px 14px 5px;font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;font-family:var(--mono);display:flex;align-items:center;justify-content:space-between;padding-right:10px;white-space:nowrap;opacity:0;transition:opacity .15s}
+#sidebar:hover .sb-label{opacity:1}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 13px;cursor:pointer;border-radius:var(--r);margin:0 6px 1px;color:var(--text2);font-size:12px;font-weight:600;transition:all .12s;border:1px solid transparent;background:transparent;width:calc(100% - 12px);text-align:left}
+.sb-item svg{width:15px;height:15px;flex-shrink:0;opacity:.7}
+.sb-item:hover{background:var(--glass-fill-2);color:var(--text1)}
+.sb-item.active{background:linear-gradient(135deg,rgba(167,139,250,.14),rgba(124,58,237,.07));color:var(--acc);border-color:rgba(167,139,250,.18)}
+.sb-item.active svg{opacity:1}
+.sb-badge{margin-left:auto;font-size:9px;padding:1px 5px;border-radius:7px;background:var(--bg4);color:var(--text2);font-family:var(--mono)}
+#sb-bottom{padding:8px;border-top:1px solid var(--glass-border);flex-shrink:0}
+.sb-act{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--glass-border);border-radius:var(--r);cursor:pointer;font-size:11px;font-weight:600;color:var(--text2);background:var(--glass-fill);transition:all .13s;width:100%;text-align:left;margin-bottom:4px}
+.sb-act:last-child{margin-bottom:0}
+.sb-act:hover{border-color:var(--acc);color:var(--text1);background:rgba(167,139,250,.1)}
+.sb-act.danger{color:var(--red);border-color:rgba(248,113,113,.2)}
+.sb-act.danger:hover{border-color:var(--red);background:rgba(248,113,113,.06)}
+.sb-act svg{width:13px;height:13px;flex-shrink:0}
+.pl-row{display:flex;align-items:center;gap:2px;margin:0 6px 1px}
+#sidebar:not(:hover) .pl-row{justify-content:center}
+#sidebar:not(:hover) .pl-more{display:none}
+.pl-row .sb-item{flex:1;margin:0;font-size:11px}
+.pl-more{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 6px;border-radius:5px;font-size:14px;transition:all .12s}
+.pl-more:hover{color:var(--text1);background:var(--glass-fill-2)}
+
+/* ── MAIN ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat))}
+/* Smart search bar */
+#topbar{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--glass-border);flex-shrink:0}
+.srch{flex:1;display:flex;align-items:center;gap:7px;background:var(--glass-fill);border:1px solid var(--glass-border);border-radius:16px;padding:6px 13px;transition:border .13s;position:relative}
+.srch:focus-within{border-color:rgba(167,139,250,.5)}
+.srch svg{width:13px;height:13px;color:var(--text3);flex-shrink:0}
+#search{flex:1;background:transparent;border:none;outline:none;color:var(--text1);font-size:12px;font-family:var(--font)}
+#search::placeholder{color:var(--text3)}
+.ftab{padding:5px 11px;border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid transparent;color:var(--text2);transition:all .12s;background:transparent}
+.ftab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+.ftab:hover:not(.active){color:var(--text1);background:var(--glass-fill-2)}
+.sm-btn{background:none;border:none;cursor:pointer;color:var(--text2);padding:6px;display:flex;align-items:center;border-radius:6px;transition:all .12s}
+.sm-btn:hover{color:var(--text1);background:var(--glass-fill-2)}
+.sm-btn svg{width:14px;height:14px}
+
+/* Sort bar */
+#sortbar{display:flex;align-items:center;gap:5px;padding:5px 14px;border-bottom:1px solid var(--glass-border);flex-shrink:0;font-family:var(--mono)}
+.srt{padding:2px 8px;border-radius:10px;border:1px solid transparent;cursor:pointer;background:transparent;color:var(--text3);font-size:10px;font-family:var(--mono);transition:all .12s}
+.srt:hover{color:var(--text2)}
+.srt.active{border-color:var(--glass-border);background:var(--glass-fill-2);color:var(--text1)}
+#srt-cnt{margin-left:auto;font-size:10px;color:var(--text3)}
+
+/* Loadbar */
+#loadbar{display:none;align-items:center;gap:9px;padding:6px 14px;background:var(--glass-fill);border-bottom:1px solid var(--glass-border);font-size:11px;color:var(--text2);font-family:var(--mono);flex-shrink:0}
+.spin{width:12px;height:12px;border:2px solid var(--bg4);border-top-color:var(--acc);border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Track list */
+#track-scroll{flex:1;overflow-y:auto;overflow-x:hidden}
+#track-scroll::-webkit-scrollbar{width:5px}
+#track-scroll::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+#track-list{padding:4px 0}
+.t-row{display:flex;align-items:center;padding:6px 12px;border-radius:var(--r);margin:1px 8px;cursor:pointer;transition:background .1s;border:1px solid transparent}
+.t-row:hover{background:var(--glass-fill-2)}
+.t-row.playing{background:linear-gradient(135deg,rgba(167,139,250,.1),rgba(124,58,237,.05));border-color:rgba(167,139,250,.14)}
+.t-row.playing .t-name{color:var(--acc);font-weight:700}
+.t-num{width:28px;font-size:10px;color:var(--text3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+.t-eq{display:none;gap:2px;align-items:flex-end;height:13px}
+.t-row.playing .t-num-n{display:none}
+.t-row.playing .t-eq{display:flex}
+.eq-b{width:2.5px;border-radius:1px;background:var(--acc);animation:eqb .45s ease-in-out infinite alternate}
+.eq-b:nth-child(2){animation-delay:.18s}.eq-b:nth-child(3){animation-delay:.08s}
+@keyframes eqb{0%{height:2px}100%{height:11px}}
+.t-thumb{width:36px;height:36px;border-radius:7px;flex-shrink:0;background:var(--glass-fill-2);overflow:hidden;margin-right:10px;border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center}
+.t-thumb img{width:100%;height:100%;object-fit:cover}
+.t-thumb-icon{opacity:.3}
+.t-thumb-icon svg{width:16px;height:16px}
+.t-info{flex:1;min-width:0}
+.t-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text1)}
+.t-meta{display:flex;align-items:center;gap:5px;margin-top:1px}
+.badge{font-size:9px;padding:1px 5px;border-radius:6px;font-weight:700;font-family:var(--mono)}
+.badge-local{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2)}
+.badge-gdrive{background:rgba(167,139,250,.1);color:var(--acc);border:1px solid rgba(167,139,250,.2)}
+.badge-jamendo,.badge-fma{background:rgba(251,191,36,.1);color:var(--amber);border:1px solid rgba(251,191,36,.2)}
+.t-artist{font-size:10px;color:var(--text3)}
+.t-lbtn{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;padding:3px 5px;border-radius:6px;transition:all .12s;flex-shrink:0}
+.t-lbtn:hover,.t-lbtn.liked{color:var(--pink)}
+.t-lbtn.liked svg{fill:var(--pink)}
+.t-lbtn svg{width:11px;height:11px}
+.t-qual{font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:6px;border:1px solid var(--glass-border);color:var(--text3);flex-shrink:0;margin-right:3px}
+.t-qual.lossless{color:var(--teal);border-color:rgba(45,212,191,.25)}
+.t-qual.mp3{color:var(--amber);border-color:rgba(251,191,36,.2)}
+.t-dur{width:38px;text-align:right;font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0}
+
+/* Empty */
+#empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:40px}
+#empty svg{width:58px;height:58px;opacity:.15}
+#empty h3{font-size:19px;font-weight:800}
+#empty p{font-size:12px;color:var(--text2);line-height:1.65;max-width:280px}
+.e-btns{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:center}
+.e-btn{padding:9px 20px;border-radius:14px;font-size:12px;font-weight:700;cursor:pointer;border:none;letter-spacing:.03em;transition:all .13s}
+.e-btn-p{background:var(--acc);color:#fff}.e-btn-p:hover{background:var(--acc2);transform:scale(1.02)}
+.e-btn-s{background:var(--glass-fill-2);color:var(--text1)}.e-btn-s:hover{background:var(--bg4)}
+
+/* ── NOW PLAYING BAR ── */
+/* The player bar: intentionally opaque, not see-through — this is the
+   one surface you're looking at constantly, so it reads as solid,
+   stable ground rather than a window onto whatever's animating behind
+   it. Still genuinely "frosted glass": backdrop-filter blur+saturate
+   under the near-opaque fill gives it a soft colour cast at the edges,
+   plus a grain texture and a glossy top highlight for real depth. */
+#npbar{position:relative;isolation:isolate;height:88px;background:var(--glass-bg-opaque);border-top:1px solid var(--glass-hi);box-shadow:inset 0 1px 0 var(--glass-hi),0 -12px 30px -14px rgba(0,0,0,.5);flex-shrink:0;display:flex;align-items:center;padding:0 18px;gap:18px}
+#npbar::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0) 40%)}
+#npbar::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+#npbar>*{position:relative;z-index:1}
+#np-left{display:flex;align-items:center;gap:11px;width:260px;flex-shrink:0;min-width:0}
+#np-art{width:54px;height:54px;border-radius:9px;background:var(--glass-fill-2);flex-shrink:0;overflow:hidden;border:1px solid var(--glass-border);position:relative;cursor:pointer}
+#np-art canvas{position:absolute;inset:0;width:100%;height:100%}
+.np-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.25}
+#np-meta{flex:1;min-width:0}
+#np-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text1);cursor:pointer}
+#np-title:hover{color:var(--acc)}
+#np-sub{font-size:10px;color:var(--text2);font-family:var(--mono);margin-top:2px;display:flex;align-items:center;gap:5px}
+#np-qual-pill{font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(45,212,191,.12);color:var(--teal);border:1px solid rgba(45,212,191,.25)}
+#np-like{background:none;border:none;cursor:pointer;color:var(--text3);display:flex;padding:5px;transition:color .12s}
+#np-like:hover,#np-like.liked{color:var(--pink)}
+#np-like.liked svg{fill:var(--pink)}
+#np-like svg{width:15px;height:15px}
+#np-center{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
+#ctrl-row{display:flex;align-items:center;gap:5px}
+.c-btn{background:transparent;border:none;color:var(--text2);cursor:pointer;padding:6px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.c-btn:hover{color:var(--text1);background:var(--glass-fill-2)}
+.c-btn.on{color:var(--acc)}
+.c-btn svg{width:14px;height:14px}
+#pp-btn{width:36px;height:36px;background:linear-gradient(155deg,rgba(255,255,255,.55) 0%,rgba(167,139,250,.85) 45%,rgba(244,114,182,.85) 100%);backdrop-filter:blur(8px) saturate(180%);-webkit-backdrop-filter:blur(8px) saturate(180%);border:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -5px 9px -4px rgba(124,58,237,.7),0 4px 16px rgba(167,139,250,.45);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;transition:transform .1s}
+#pp-btn:hover{transform:scale(1.07)}
+#pp-btn svg{width:15px;height:15px}
+#prog-row{display:flex;align-items:center;gap:7px;width:100%;max-width:500px}
+.tl{font-size:10px;color:var(--text2);min-width:34px;text-align:center;font-family:var(--mono)}
+#prog{flex:1;height:4px;appearance:none;background:var(--bg4);border-radius:2px;cursor:pointer;outline:none;accent-color:var(--acc)}
+#prog::-webkit-slider-thumb{appearance:none;width:10px;height:10px;border-radius:50%;background:var(--text1);cursor:pointer;opacity:.6;transition:opacity .13s}
+#prog-row:hover #prog::-webkit-slider-thumb{opacity:1;width:13px;height:13px}
+#np-right{display:flex;align-items:center;gap:5px;width:210px;justify-content:flex-end;flex-shrink:0}
+#vol-wrap{display:flex;align-items:center;gap:4px}
+#vol{width:68px;height:3px;appearance:none;background:var(--bg4);border-radius:2px;cursor:pointer;outline:none;accent-color:var(--acc)}
+#vol::-webkit-slider-thumb{appearance:none;width:10px;height:10px;border-radius:50%;background:var(--text1);cursor:pointer}
+
+/* ── FULL PLAYER ── */
+/* The overlay itself stays an unblurred tinted wash — it covers the
+   whole content area, so giving IT a backdrop-filter too would mean
+   blurring the largest region in the app continuously. The feature
+   cards inside it are where the actual (smaller, cheaper) glass
+   blur — and the colour variety — lives. */
+#fp{display:none;position:fixed;top:42px;left:0;right:0;bottom:88px;z-index:50;background:linear-gradient(170deg,rgb(24,12,46) 0%,rgb(9,7,17) 55%);overflow-y:auto;padding:28px 32px 24px}
+#fp.show{display:block}
+#fp::-webkit-scrollbar{width:5px}
+#fp::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:3px}
+#fp-close{position:fixed;top:50px;right:18px;background:var(--glass-fill-2);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid var(--glass-border);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:pointer;font-size:16px;transition:all .12s;z-index:1}
+#fp-close:hover{color:var(--text1);background:var(--glass-fill-2)}
+#fp-body{display:flex;gap:36px;max-width:980px;margin:0 auto}
+#fp-left{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:14px;width:240px}
+#fp-art-big{width:220px;height:220px;border-radius:16px;background:var(--glass-fill-2);overflow:hidden;position:relative;border:1px solid var(--glass-hi);box-shadow:inset 0 1px 0 var(--glass-hi),0 20px 60px rgba(124,58,237,.3)}
+#fp-art-big canvas{position:absolute;inset:0;width:100%;height:100%}
+#fp-tname{font-size:17px;font-weight:800;text-align:center;color:var(--text1);letter-spacing:-.02em}
+#fp-tsub{font-size:11px;color:var(--text2);font-family:var(--mono);text-align:center}
+#fp-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+#upnext-list{max-height:260px;overflow-y:auto}
+#upnext-list::-webkit-scrollbar{width:3px}
+#upnext-list::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:2px}
+.upnext-item:hover{background:var(--glass-fill-2)}
+#eq-panel{border-radius:var(--r-lg);padding:14px 14px 12px;width:240px;flex-shrink:0}
+#eq-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.eq-tab{font-size:8.5px;padding:3px 8px;border-radius:6px;background:var(--glass-fill-2);border:1px solid var(--glass-border);color:var(--text2);cursor:pointer;font-family:var(--mono);white-space:nowrap;transition:all .12s}
+.eq-tab:hover{color:var(--text1);border-color:var(--acc)}
+.eq-tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+.ai-head{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono)}
+#eq-bands{display:flex;gap:6px;align-items:flex-end;height:88px;padding-top:6px;width:100%;overflow:hidden}
+.eq-band{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:0}
+.eq-band input[type=range]{writing-mode:vertical-lr;direction:rtl;width:18px;height:60px;appearance:none;background:transparent;cursor:pointer}
+.eq-band input::-webkit-slider-runnable-track{width:3px;background:var(--bg4);border-radius:2px}
+.eq-band input::-webkit-slider-thumb{appearance:none;width:11px;height:11px;border-radius:50%;background:var(--acc);cursor:pointer;margin-left:-4px}
+.eq-band span{font-size:7.5px;color:var(--text3);font-family:var(--mono)}
+#eq-val-row{display:flex;gap:6px;margin-top:4px}
+.eq-v{flex:1;text-align:center;font-size:8px;color:var(--acc);font-family:var(--mono)}
+
+/* ── QUEUE PANEL ── */
+#queue-panel{display:none;position:fixed;top:42px;right:0;bottom:88px;width:300px;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));border-left:1px solid var(--glass-border);box-shadow:inset 1px 0 0 var(--glass-hi),-4px 0 24px rgba(0,0,0,.25);z-index:55;flex-direction:column}
+#queue-panel.show{display:flex}
+#qp-head{padding:14px 14px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid var(--glass-border)}
+#qp-tabs{display:flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);box-shadow:inset 0 1px 3px rgba(0,0,0,.3);border-radius:10px;padding:2px}
+.qp-tab{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text2);transition:all .12s;border:1px solid transparent;background:transparent}
+.qp-tab.active{background:linear-gradient(165deg,rgba(167,139,250,.35),rgba(124,58,237,.2));border-color:rgba(167,139,250,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.25);color:var(--text1)}
+#qp-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:2px 6px}
+#qp-close:hover{color:var(--text1)}
+#qp-list{flex:1;overflow-y:auto;padding:6px 8px}
+#qp-list::-webkit-scrollbar{width:3px}
+#qp-list::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:2px}
+.qp-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);cursor:pointer;transition:background .1s}
+.qp-item:hover{background:var(--glass-fill-2)}
+.qp-art{width:36px;height:36px;border-radius:5px;background:var(--glass-fill-2);flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--glass-border);overflow:hidden}
+.qp-art img{width:100%;height:100%;object-fit:cover}
+.qp-art svg{width:14px;height:14px;opacity:.3}
+.qp-info{flex:1;min-width:0}
+.qp-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qp-sub{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.qp-dur{font-size:10px;color:var(--text3);font-family:var(--mono)}
+
+/* ── MODALS ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.68);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.overlay.show{display:flex}
+.modal{position:relative;background:var(--glass-bg-opaque);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-hi),0 24px 60px rgba(0,0,0,.5);border-radius:var(--r-xl);padding:28px;max-width:90vw}
+.modal::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;border-radius:inherit;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.modal h2{font-size:17px;font-weight:800;color:var(--text1);margin-bottom:6px}
+.modal p{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px}
+.m-field{margin-bottom:12px}
+.m-field label{display:block;font-size:10px;color:var(--text2);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono)}
+.m-field input,.m-field textarea{width:100%;background:rgba(255,255,255,.055);box-shadow:inset 0 1px 4px rgba(0,0,0,.35);border:1px solid var(--glass-border);border-radius:var(--r);padding:8px 11px;color:var(--text1);font-size:12px;font-family:var(--mono);outline:none;transition:border .13s;resize:vertical}
+.m-field input:focus,.m-field textarea:focus{border-color:var(--acc)}
+.m-hint{font-size:10px;color:var(--text3);margin-top:4px;line-height:1.5}
+.m-hint code{background:var(--glass-fill-2);padding:1px 4px;border-radius:3px;font-family:var(--mono)}
+.m-acts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.m-btn{padding:8px 18px;border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer;border:none;transition:all .13s}
+.m-btn-p{background:var(--acc);color:#fff}.m-btn-p:hover{background:var(--acc2)}
+.m-btn-s{background:var(--glass-fill-2);color:var(--text2)}.m-btn-s:hover{color:var(--text1)}
+.m-btn-g{background:#4285F4;color:#fff}.m-btn-g:hover{background:#3367D6}
+#m-status{font-size:11px;margin-top:8px;min-height:16px;font-family:var(--mono)}
+.ok{color:var(--teal)}.err{color:var(--red)}.inf{color:var(--text2)}
+.drive-file-list{max-height:240px;overflow-y:auto;margin-top:10px;border:1px solid var(--glass-border);border-radius:var(--r);background:var(--glass-fill)}
+.drive-file-list::-webkit-scrollbar{width:3px}
+.drive-file-list::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:2px}
+.df-row{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--glass-border);cursor:pointer;transition:background .1s}
+.df-row:last-child{border-bottom:none}
+.df-row:hover{background:var(--glass-fill-2)}
+.df-name{font-size:12px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.df-size{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.fb-type-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.fb-type{padding:6px 13px;border-radius:12px;border:1px solid var(--glass-border);cursor:pointer;font-size:11px;font-weight:600;color:var(--text2);background:rgba(255,255,255,.055);transition:all .12s}
+.fb-type:hover:not(.active){background:rgba(255,255,255,.09);color:var(--text1)}
+.fb-type.active{background:linear-gradient(165deg,rgba(255,255,255,.3),rgba(167,139,250,.85) 55%,rgba(124,58,237,.9));border-color:rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.5);color:#fff}
+
+/* ── SETTINGS ── */
+#settings-panel{display:none;position:fixed;top:42px;left:0;right:0;bottom:88px;background:linear-gradient(170deg,rgb(24,12,46) 0%,rgb(9,7,17) 55%);z-index:50;overflow-y:auto;padding:28px 32px}
+#settings-panel.show{display:block}
+#settings-panel::-webkit-scrollbar{width:5px}
+#settings-panel::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:3px}
+.sp-close{position:absolute;top:14px;right:18px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:22px}
+.sp-close:hover{color:var(--text1)}
+.sp-h1{font-size:22px;font-weight:800;margin-bottom:3px}
+.sp-sub{font-size:12px;color:var(--text2);margin-bottom:22px}
+.sp-sec{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin:18px 0 8px;font-family:var(--mono)}
+.sp-card{background:var(--glass-bg);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-hi);border-radius:var(--r-lg);overflow:hidden;margin-bottom:5px}
+.sp-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--glass-border);gap:16px}
+.sp-row:last-child{border-bottom:none}
+.sp-label{font-size:13px;font-weight:600;color:var(--text1)}
+.sp-desc{font-size:11px;color:var(--text2);margin-top:1px}
+.tog{width:38px;height:21px;background:var(--glass-fill-2);border:none;border-radius:11px;cursor:pointer;position:relative;transition:background .18s;flex-shrink:0}
+.tog.on{background:var(--acc)}
+.tog::after{content:'';position:absolute;top:3px;left:3px;width:15px;height:15px;background:#fff;border-radius:50%;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.tog.on::after{transform:translateX(17px)}
+.sp-slider{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.sp-slider input[type=range]{width:110px;height:3px;appearance:none;background:var(--glass-fill-2);border-radius:2px;outline:none;cursor:pointer;accent-color:var(--acc)}
+.sp-val{font-size:10px;color:var(--text2);font-family:var(--mono);min-width:28px;text-align:right}
+.sp-sel{background:var(--glass-fill-2);border:1px solid var(--glass-border);border-radius:var(--r);padding:6px 10px;color:var(--text1);font-size:11px;font-family:var(--mono);outline:none;cursor:pointer}
+.sp-input-row{display:flex;gap:8px;width:100%;align-items:center}
+.sp-input{flex:1;background:var(--glass-fill-2);border:1px solid var(--glass-border);border-radius:var(--r);padding:7px 10px;color:var(--text1);font-size:11px;font-family:var(--mono);outline:none;transition:border .13s}
+.sp-input:focus{border-color:var(--acc)}
+
+/* ── CONTEXT MENU ── */
+#ctx{position:fixed;background:var(--glass-bg-opaque);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-hi),0 8px 32px rgba(0,0,0,.55);border-radius:var(--r-lg);padding:4px;z-index:500;min-width:180px;display:none;isolation:isolate}
+#ctx::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:.045;mix-blend-mode:overlay;border-radius:inherit;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.ctx-item{padding:7px 13px;font-size:12px;cursor:pointer;border-radius:6px;color:var(--text1);font-weight:500;transition:background .1s;display:flex;align-items:center;gap:8px;white-space:nowrap;position:relative;z-index:1}
+.ctx-item:hover{background:var(--glass-fill-2)}
+.ctx-item.danger{color:var(--red)}
+.ctx-sep{height:1px;background:var(--glass-border);margin:3px 6px}
+.ctx-sub{font-size:10px;color:var(--text3);padding:5px 13px 2px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(5px);background:var(--glass-bg-2);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-hi),0 8px 24px rgba(0,0,0,.35);color:var(--text1);padding:7px 16px;border-radius:14px;font-size:11px;font-weight:600;opacity:0;transition:all .18s;z-index:600;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── DISCOVER (Free Music) tab ── */
+#discover-panel{display:none;flex-direction:column;height:100%;overflow:hidden}
+#discover-panel.show{display:flex}
+#discover-search{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--glass-border);flex-shrink:0}
+#discover-input{flex:1;background:var(--glass-fill);border:1px solid var(--glass-border);border-radius:12px;padding:7px 12px;color:var(--text1);font-size:12px;outline:none;font-family:var(--font)}
+#discover-input:focus{border-color:var(--acc)}
+#discover-input::placeholder{color:var(--text3)}
+.disc-btn{padding:7px 14px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;border:none;transition:all .13s}
+.disc-btn-p{background:var(--acc);color:#fff}.disc-btn-p:hover{background:var(--acc2)}
+.disc-btn-s{background:var(--glass-fill);color:var(--text2);border:1px solid var(--glass-border)}.disc-btn-s.active{border-color:var(--acc);color:var(--acc)}
+.disc-source-row{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid var(--glass-border);flex-shrink:0}
+#discover-results{flex:1;overflow-y:auto;padding:6px 0}
+#discover-results::-webkit-scrollbar{width:5px}
+#discover-results::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+.disc-result{display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;transition:background .1s;border-radius:var(--r);margin:1px 8px}
+.disc-result:hover{background:var(--glass-fill-2)}
+.disc-art{width:42px;height:42px;border-radius:8px;background:var(--glass-fill-2);flex-shrink:0;overflow:hidden;border:1px solid var(--glass-border)}
+.disc-art img{width:100%;height:100%;object-fit:cover}
+.disc-info{flex:1;min-width:0}
+.disc-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.disc-artist{font-size:10px;color:var(--text3);margin-top:1px}
+.disc-meta{display:flex;align-items:center;gap:6px;margin-top:2px}
+.disc-play{background:var(--acc);border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;flex-shrink:0;transition:all .13s}
+.disc-play:hover{background:var(--acc2);transform:scale(1.05)}
+.disc-play svg{width:12px;height:12px}
+.disc-add{background:var(--glass-fill-2);border:1px solid var(--glass-border);border-radius:8px;padding:4px 9px;font-size:10px;color:var(--text2);cursor:pointer;transition:all .12s}
+.disc-add:hover{border-color:var(--acc);color:var(--acc)}
+.disc-add.liked{color:#ff4d6d;border-color:rgba(255,77,109,.4);background:rgba(255,77,109,.08)}
+.disc-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:10px;color:var(--text3);font-size:13px;text-align:center}
+.disc-empty svg{width:40px;height:40px;opacity:.2}
+.disc-license{font-size:8px;font-family:var(--mono);padding:1px 5px;border-radius:4px;background:rgba(251,191,36,.1);color:var(--amber);border:1px solid rgba(251,191,36,.2)}
+.disc-back-bar{display:flex;align-items:center;gap:6px;padding:10px 14px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:1px solid var(--glass-border);margin-bottom:6px}
+.disc-back-bar:hover{color:var(--acc)}
+.disc-group-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:10px 14px 6px;font-family:var(--mono)}
+.disc-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;padding:0 14px 6px}
+.disc-card{cursor:pointer;border-radius:var(--r);padding:6px;transition:background .1s}
+.disc-card:hover{background:var(--glass-fill-2)}
+.disc-card-art{width:100%;aspect-ratio:1;border-radius:8px;background:var(--glass-fill-2);overflow:hidden;border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center}
+.disc-card-art img{width:100%;height:100%;object-fit:cover}
+.disc-card-name{font-size:11px;font-weight:600;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.disc-card-sub{font-size:9px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+
+<div id="bg-ambient"><div class="bg-blob bg-blob-1"></div><div class="bg-blob bg-blob-2"></div><div class="bg-blob bg-blob-3"></div><div class="bg-blob bg-blob-4"></div></div>
+
+<!-- TITLEBAR -->
+<div id="titlebar">
+  <div class="tb-logo"><img src="assets/icon.png" alt=""><span class="tb-logo-text">GrooveBox</span></div>
+  <span class="tb-ver">v3.2</span>
+  <button id="tb-online" onclick="toggleOnlineMode()" title="Click to toggle Online/Offline mode">
+    <span id="tb-online-dot"></span>
+    <span id="tb-online-text">OFFLINE</span>
+  </button>
+  <div id="tb-space"></div>
+  <span id="tb-qual">NO FILE</span>
+  <!-- Google user pill -->
+  <div id="tb-user" onclick="showUserMenu()">
+    <img id="tb-avatar" src="" alt="">
+    <span id="tb-uname"></span>
+  </div>
+  <button id="tb-signin" onclick="startGoogleAuth()" style="display:none">Sign in with Google</button>
+  <button class="wbtn" onclick="GB.winMin()" title="Minimize">─</button>
+  <button class="wbtn" onclick="GB.winMax()" title="Maximize">□</button>
+  <button class="wbtn" id="wbtn-close" onclick="GB.winClose()">✕</button>
+</div>
+
+<div id="body">
+<div id="sidebar-spacer"></div>
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sb-scroll">
+    <div class="sb-label">Library</div>
+    <button class="sb-item active" id="nav-all"    onclick="setView('all')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>All Songs<span class="sb-badge" id="sb-cnt">0</span></button>
+    <button class="sb-item" id="nav-liked"  onclick="setView('liked')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23z"/></svg>Liked Songs</button>
+    <button class="sb-item" id="nav-ranked" onclick="setView('ranked')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Top Ranked</button>
+    <button class="sb-item" id="nav-local"  onclick="setView('local')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Local Files</button>
+    <button class="sb-item" id="nav-gdrive" onclick="setView('gdrive')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Google Drive</button>
+    <button class="sb-item" id="nav-discover" onclick="setView('discover')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>Discover <span class="sb-badge" style="background:rgba(251,191,36,.15);color:var(--amber)">FREE</span></button>
+    <div class="sb-label"><span>Playlists</span><button onclick="promptNewPlaylist()" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:18px;padding:0;line-height:1;-webkit-app-region:no-drag">+</button></div>
+    <div id="pl-sidebar"></div>
+  </div>
+  <div id="sb-bottom">
+    <button class="sb-act" onclick="pickFiles()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>Add Files</button>
+    <button class="sb-act" onclick="pickFolder()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Add Folder</button>
+    <button class="sb-act" onclick="linkFolder()" title="For large libraries — plays from the original folder instead of copying it, so it doesn't double your disk space. The folder itself is never modified."><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link Folder (no copy)</button>
+    <button class="sb-act" onclick="openSettings()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
+    <button class="sb-act" onclick="openFeedback()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Support &amp; Feedback</button>
+    <button class="sb-act danger" onclick="clearLibrary()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>Clear Library</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- Library view -->
+  <div id="library-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div id="topbar">
+      <div class="srch">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search" placeholder="Search your library…" oninput="onSearchInput()">
+      </div>
+      <div class="ftab active" id="tab-all"    onclick="setSrcFilter('all')">All</div>
+      <div class="ftab"        id="tab-local"  onclick="setSrcFilter('local')">Local</div>
+      <div class="ftab"        id="tab-gdrive" onclick="setSrcFilter('gdrive')">Drive</div>
+      <button class="sm-btn" onclick="toggleQueue()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+    </div>
+    <div id="loadbar"><div class="spin"></div><span id="load-txt">Loading…</span></div>
+    <div id="sortbar">
+      <span>Sort:</span>
+      <button class="srt active" id="srt-default" onclick="setSort('default')">Default</button>
+      <button class="srt" id="srt-az"     onclick="setSort('az')">A–Z</button>
+      <button class="srt" id="srt-liked"  onclick="setSort('liked')">Most Liked</button>
+      <button class="srt" id="srt-recent" onclick="setSort('recent')">Recent</button>
+      <span id="srt-cnt" style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)">0 tracks</span>
+    </div>
+    <div id="track-scroll">
+      <div id="track-list"></div>
+      <div id="empty">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <h3>Your library is empty</h3>
+        <p>Add local audio files, link a Google Drive folder, or discover free music in the Discover tab.</p>
+        <div class="e-btns">
+          <button class="e-btn e-btn-p" onclick="pickFiles()">Add Files</button>
+          <button class="e-btn e-btn-s" onclick="setView('discover')">Discover Free Music</button>
+          <button class="e-btn e-btn-s" onclick="openDriveModal()">Drive Folder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Discover view -->
+  <div id="discover-panel">
+    <div id="discover-offline-notice" style="display:none;padding:12px 14px;background:rgba(251,191,36,.06);border-bottom:1px solid rgba(251,191,36,.2);font-size:12px;color:var(--amber);flex-shrink:0;display:flex;align-items:center;gap:10px">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;flex-shrink:0"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+      <span style="flex:1"><strong>Offline mode</strong> — enable Online in the titlebar to search YouTube</span>
+      <button onclick="toggleOnlineMode()" style="padding:4px 12px;font-size:11px;font-weight:700;background:var(--acc);color:#fff;border:none;border-radius:10px;cursor:pointer">Go Online</button>
+    </div>
+    <div id="discover-search">
+      <input id="discover-input" placeholder="Search any artist or song… (e.g. Tame Impala, Martin Garrix, jazz)" onkeydown="if(event.key==='Enter')searchDiscover()">
+      <button class="disc-btn disc-btn-p" onclick="searchDiscover()">Search</button>
+    </div>
+    <div class="disc-source-row">
+      <button class="disc-btn disc-btn-yt active" id="dsrc-youtube" onclick="setDiscoverSource('youtube')" style="background:linear-gradient(135deg,#ff0000,#cc0000);color:#fff;border:none;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;flex-shrink:0"><path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 0 0 .5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 0 0 2.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
+        YouTube Music
+      </button>
+      <button class="disc-btn disc-btn-sp" id="dsrc-spotify" onclick="setDiscoverSource('spotify')" style="background:linear-gradient(135deg,#1ed760,#169c46);color:#fff;border:none;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;opacity:.55">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;flex-shrink:0"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 4.32-1.32 9.719-.66 13.439 1.62.361.181.54.78.301 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.72-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        Spotify
+      </button>
+      <button class="disc-btn disc-btn-s" id="dsrc-liked" onclick="showDiscoverLiked()">♥ Liked Songs</button>
+    </div>
+    <!-- Source info banner -->
+    <div id="disc-info-banner" style="padding:6px 14px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--glass-border);background:var(--glass-fill);flex-shrink:0">
+      <span id="disc-info-text">▶ <strong style="color:var(--text2)">YouTube Music</strong> — Any song ever made. Full tracks. Needs your free YouTube API key + yt-dlp (Settings).</span>
+    </div>
+    <div id="discover-results">
+      <div class="disc-empty">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <div style="font-size:13px;font-weight:600;color:var(--text2)">Search any song or artist</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;max-width:300px;text-align:center;line-height:1.6">Try <span style="color:var(--acc);cursor:pointer" onclick="document.getElementById('discover-input').value='Tame Impala';searchDiscover()">"Tame Impala"</span>, <span style="color:var(--acc);cursor:pointer" onclick="document.getElementById('discover-input').value='lofi chill';searchDiscover()">"lofi chill"</span>, or <span style="color:var(--acc);cursor:pointer" onclick="document.getElementById('discover-input').value='jazz';searchDiscover()">"jazz"</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- NOW PLAYING BAR -->
+<div id="npbar">
+  <div id="np-left">
+    <div id="np-art" onclick="openFullPlayer()"><div class="np-ph"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+    <div id="np-meta">
+      <div id="np-title" onclick="openFullPlayer()">Nothing playing</div>
+      <div id="np-sub"><span id="np-sub-txt">—</span><span id="np-qual-pill" style="display:none;margin-left:4px"></span></div>
+    </div>
+    <button id="np-like" onclick="likeCurrentTrack()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+  </div>
+  <div id="np-center">
+    <div id="ctrl-row">
+      <button class="c-btn" id="shuf-btn" onclick="toggleShuffle()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg></button>
+      <button class="c-btn" onclick="playPrev()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+      <button id="pp-btn" onclick="togglePlay()"><svg id="pp-icon" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21"/></svg></button>
+      <button class="c-btn" onclick="playNext()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+      <button class="c-btn" id="rep-btn" onclick="toggleRepeat()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+    </div>
+    <div id="prog-row">
+      <span class="tl" id="t-cur">0:00</span>
+      <input type="range" id="prog" min="0" max="100" value="0" step="0.1" oninput="seek(this.value)">
+      <span class="tl" id="t-tot">0:00</span>
+    </div>
+  </div>
+  <div id="np-right">
+    <button class="sm-btn" onclick="openFullPlayer()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+    <button class="sm-btn" onclick="openMiniPlayer()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3h5v5"/><path d="M8 3H3v5"/></svg></button>
+    <div id="vol-wrap">
+      <button class="sm-btn" onclick="toggleMute()"><svg id="vol-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
+      <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8" oninput="setVol(this.value)">
+    </div>
+  </div>
+</div>
+
+<!-- FULL PLAYER -->
+<div id="fp">
+  <button id="fp-close" onclick="closeFullPlayer()">✕</button>
+  <div id="fp-body">
+    <div id="fp-left">
+      <div id="fp-art-big"><div class="np-ph" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.15"><svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+      <div id="fp-tname">Nothing playing</div>
+      <div id="fp-tsub">—</div>
+      <div id="eq-panel" class="glass-tint-teal">
+        <div class="ai-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span>Equalizer</span>
+          <button onclick="resetEQ()" style="font-size:9px;padding:2px 8px;border-radius:6px;background:var(--glass-fill-2);border:1px solid var(--glass-border);color:var(--text2);cursor:pointer;font-family:var(--mono)">Reset</button>
+        </div>
+        <div id="eq-tabs">
+          <button class="eq-tab active" data-preset="Flat" onclick="applyEQPreset('Flat')">Flat</button>
+          <button class="eq-tab" data-preset="Bass Boost" onclick="applyEQPreset('Bass Boost')">Bass</button>
+          <button class="eq-tab" data-preset="Vocal Boost" onclick="applyEQPreset('Vocal Boost')">Vocal</button>
+          <button class="eq-tab" data-preset="Treble Boost" onclick="applyEQPreset('Treble Boost')">Treble</button>
+          <button class="eq-tab" data-preset="Jazz" onclick="applyEQPreset('Jazz')">Jazz</button>
+          <button class="eq-tab" data-preset="Rock" onclick="applyEQPreset('Rock')">Rock</button>
+        </div>
+        <div id="eq-bands"></div>
+        <div id="eq-val-row"></div>
+      </div>
+      <div id="playback-panel" class="glass-tint-purple" style="border-radius:var(--r-lg);padding:14px;width:240px">
+        <div class="ai-head" style="margin-bottom:10px">Playback</div>
+        <div style="display:flex;gap:8px">
+          <button id="speed-btn" onclick="cycleSpeedMenu(event)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:var(--r);background:var(--glass-fill-2);border:1px solid var(--glass-border);color:var(--text1);cursor:pointer;font-family:var(--mono)">
+            <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Speed</span>
+            <span id="speed-val" style="font-size:14px;font-weight:700">1.0×</span>
+          </button>
+          <button id="sleep-btn" onclick="openSleepMenu(event)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:var(--r);background:var(--glass-fill-2);border:1px solid var(--glass-border);color:var(--text1);cursor:pointer;font-family:var(--mono)">
+            <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Sleep Timer</span>
+            <span id="sleep-val" style="font-size:14px;font-weight:700">Off</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="fp-right">
+      <!-- Audio quality -->
+      <div class="glass-clear" style="border-radius:var(--r-lg);padding:16px">
+        <div class="ai-head" style="margin-bottom:10px">Audio Quality</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="background:var(--glass-fill-2);border-radius:8px;padding:8px 10px"><div style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;margin-bottom:3px">Format</div><div style="font-size:13px;font-weight:700;color:var(--acc)" id="ai-fmt">—</div></div>
+          <div style="background:var(--glass-fill-2);border-radius:8px;padding:8px 10px"><div style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;margin-bottom:3px">Sample Rate</div><div style="font-size:13px;font-weight:700;color:var(--teal)" id="ai-sr">—</div></div>
+          <div style="background:var(--glass-fill-2);border-radius:8px;padding:8px 10px"><div style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;margin-bottom:3px">Bit Depth</div><div style="font-size:13px;font-weight:700;color:var(--amber)" id="ai-bd">—</div></div>
+          <div style="background:var(--glass-fill-2);border-radius:8px;padding:8px 10px"><div style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;margin-bottom:3px">Channels</div><div style="font-size:13px;font-weight:700" id="ai-ch">—</div></div>
+          <div style="background:var(--glass-fill-2);border-radius:8px;padding:8px 10px"><div style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;margin-bottom:3px">Source</div><div style="font-size:13px;font-weight:700" id="ai-src">—</div></div>
+          <div style="background:var(--glass-fill-2);border-radius:8px;padding:8px 10px"><div style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;margin-bottom:3px">File Size</div><div style="font-size:13px;font-weight:700" id="ai-sz">—</div></div>
+        </div>
+      </div>
+      <!-- Up Next -->
+      <div id="upnext-panel" class="glass-tint-pink" style="border-radius:var(--r-lg);padding:16px">
+        <div class="ai-head" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+          <span>Up Next</span>
+          <button onclick="toggleQueue()" style="background:none;border:none;color:var(--text3);font-size:10px;font-family:var(--mono);cursor:pointer;text-transform:uppercase;letter-spacing:.04em">View Queue</button>
+        </div>
+        <div id="upnext-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QUEUE PANEL -->
+<div id="queue-panel">
+  <div id="qp-head">
+    <div id="qp-tabs"><button class="qp-tab active" id="qpt-next" onclick="showQueueTab('next')">Playing Next</button><button class="qp-tab" id="qpt-hist" onclick="showQueueTab('hist')">History</button></div>
+    <button id="qp-close" onclick="toggleQueue()">✕</button>
+  </div>
+  <div id="qp-list"></div>
+</div>
+
+<!-- INPUT MODAL (replaces window.prompt, which Electron doesn't support) -->
+<div class="overlay" id="input-modal">
+  <div class="modal" style="width:360px">
+    <h2 id="input-modal-title">Name</h2>
+    <div class="m-field"><input id="input-modal-field" onkeydown="if(event.key==='Enter')closeInputModal(true);if(event.key==='Escape')closeInputModal(false)"></div>
+    <div class="m-acts">
+      <button class="m-btn m-btn-s" onclick="closeInputModal(false)">Cancel</button>
+      <button class="m-btn m-btn-p" onclick="closeInputModal(true)">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVE MODAL -->
+<div class="overlay" id="drive-modal">
+  <div class="modal" style="width:500px">
+    <h2>☁ Google Drive Folder</h2>
+    <p>Paste the shareable link of any public Google Drive folder. Set the folder to "Anyone with the link → Viewer".</p>
+    <div class="m-field"><label>Folder URL</label><input id="drive-url" placeholder="https://drive.google.com/drive/folders/…"><div class="m-hint">Right-click folder → Share → Anyone with the link → Copy link</div></div>
+    <div id="m-status"></div>
+    <div class="drive-file-list" id="drive-file-list" style="display:none"></div>
+    <div id="drive-sel-row" style="display:none;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:var(--text2)">
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="drive-sel-all" onchange="toggleSelectAllDrive(this.checked)">Select all</label>
+      <button class="m-btn m-btn-p" style="margin-left:auto;font-size:11px;padding:6px 14px" onclick="importSelectedDrive()">Import Selected</button>
+    </div>
+    <div class="m-acts">
+      <button class="m-btn m-btn-s" onclick="closeDriveModal()">Cancel</button>
+      <button class="m-btn m-btn-p" id="drive-fetch-btn" onclick="fetchDriveFolder()">Fetch Files</button>
+    </div>
+  </div>
+</div>
+
+<!-- FEEDBACK MODAL -->
+<div class="overlay" id="fb-modal">
+  <div class="modal" style="width:420px">
+    <h2>💬 Support &amp; Feedback</h2>
+    <p>Your message goes directly to the developer — akshitsingh153@gmail.com</p>
+    <div class="fb-type-row">
+      <button class="fb-type active" id="fb-bug"     onclick="setFbType('Bug Report')">🐛 Bug</button>
+      <button class="fb-type"        id="fb-feat"    onclick="setFbType('Feature Request')">💡 Feature</button>
+      <button class="fb-type"        id="fb-support" onclick="setFbType('Support')">🆘 Support</button>
+      <button class="fb-type"        id="fb-other"   onclick="setFbType('General')">💬 Other</button>
+    </div>
+    <div class="m-field"><label>Message</label><textarea id="fb-msg" rows="5" placeholder="Describe your issue or idea…"></textarea></div>
+    <div class="m-acts">
+      <button class="m-btn m-btn-s" onclick="closeFeedback()">Cancel</button>
+      <button class="m-btn m-btn-p" onclick="sendFeedback()">Open Mail →</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings-panel">
+  <button class="sp-close" onclick="closeSettings()">✕</button>
+  <div class="sp-h1">Settings</div>
+  <div class="sp-sub">GrooveBox v3.2 — Playback, Security &amp; Integrations</div>
+
+  <div class="sp-sec">Account</div>
+  <div class="sp-card">
+    <div class="sp-row" id="sp-account-row">
+      <div><div class="sp-label">Google Account</div><div class="sp-desc" id="sp-account-desc">Sign in to sync Drive music and unlock personalization</div></div>
+      <button class="m-btn m-btn-g" id="sp-signin-btn" onclick="startGoogleAuth()" style="flex-shrink:0">Sign in with Google</button>
+    </div>
+    <div class="sp-row" id="sp-google-creds-row">
+      <div style="flex:1">
+        <div class="sp-label">Google OAuth Credentials</div>
+        <div class="sp-desc">Required for Google Sign-In. Get from console.cloud.google.com</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+          <input class="sp-input" id="sp-gcid" placeholder="Client ID (xxxx.apps.googleusercontent.com)">
+          <input class="sp-input" id="sp-gcs"  placeholder="Client Secret (GOCSPX-…)" type="password">
+          <button class="m-btn m-btn-p" style="align-self:flex-end;font-size:11px;padding:6px 14px" onclick="saveGoogleCreds()">Save Credentials</button>
+        </div>
+        <div class="m-hint" style="margin-top:8px">Add <code>http://localhost:42814/oauth2callback</code> as an authorized redirect URI</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sp-sec">Google Drive</div>
+  <div class="sp-card">
+    <div class="sp-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <div><div class="sp-label">API Key (alternative to sign-in)</div><div class="sp-desc">For listing public Drive folders without signing in</div></div>
+      <div class="sp-input-row">
+        <input class="sp-input" id="sp-drive-apikey" placeholder="AIzaSy…">
+        <button class="m-btn m-btn-p" style="font-size:11px;padding:7px 14px;flex-shrink:0" onclick="saveDriveApiKey()">Save</button>
+      </div>
+      <div class="m-hint">console.cloud.google.com → Enable Drive API → Credentials → Create API Key</div>
+    </div>
+  </div>
+
+  <div class="sp-sec">YouTube Music</div>
+  <div class="sp-card">
+    <div class="sp-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <div>
+        <div class="sp-label">YouTube Data API Key</div>
+        <div class="sp-desc">Required to search YouTube Music. Free — 10,000 searches/day.</div>
+      </div>
+      <div class="sp-input-row">
+        <input class="sp-input" id="sp-yt-apikey" placeholder="AIzaSy… (from Google Cloud Console)">
+        <button class="m-btn m-btn-p" style="font-size:11px;padding:7px 14px;flex-shrink:0" onclick="saveYtApiKey()">Save</button>
+      </div>
+      <div class="m-hint">
+        console.cloud.google.com → Enable <strong>YouTube Data API v3</strong> → Credentials → Create API Key
+        <br>Same Google Cloud project you used for Drive works fine.
+      </div>
+    </div>
+    <div class="sp-row">
+      <div style="flex:1">
+        <div class="sp-label">yt-dlp Audio Engine</div>
+        <div class="sp-desc" id="ytdlp-status">Checking…</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="m-btn m-btn-p" id="ytdlp-dl-btn" style="font-size:11px;padding:5px 14px" onclick="downloadYtdlpNow()">⬇ Install Automatically</button>
+        <button class="m-btn m-btn-s" style="font-size:11px;padding:5px 12px" onclick="checkYtdlp()">Check</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sp-sec">Spotify</div>
+  <div class="sp-card">
+    <div class="sp-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <div>
+        <div class="sp-label">Search &amp; Identify</div>
+        <div class="sp-desc">Spotify can't be streamed outside their own app — search here uses Spotify's catalog for accurate metadata, then plays the matching track via YouTube.</div>
+      </div>
+      <div class="sp-input-row">
+        <input class="sp-input" id="sp-spotify-clientid" placeholder="Client ID">
+        <input class="sp-input" id="sp-spotify-clientsecret" placeholder="Client Secret" type="password">
+        <button class="m-btn m-btn-p" style="font-size:11px;padding:7px 14px;flex-shrink:0" onclick="saveSpotifyCreds()">Save</button>
+      </div>
+      <div class="m-hint">
+        developer.spotify.com/dashboard → Create app → Client ID &amp; Client Secret (Web API only, no redirect URI needed)
+      </div>
+    </div>
+  </div>
+
+  <div class="sp-sec">Playback</div>
+  <div class="sp-card">
+    <div class="sp-row"><div><div class="sp-label">Sound check</div><div class="sp-desc">Auto-level volume between tracks</div></div><button class="tog" id="tog-soundcheck" onclick="toggleSetting('soundcheck')"></button></div>
+    <div class="sp-row"><div><div class="sp-label">Auto-play on launch</div><div class="sp-desc">Resume last played track on startup</div></div><button class="tog" id="tog-autoplay" onclick="toggleSetting('autoplay')"></button></div>
+  </div>
+
+  <div class="sp-sec">Audio Output</div>
+  <div class="sp-card">
+    <div class="sp-row">
+      <div><div class="sp-label">Output Device</div><div class="sp-desc">Which speaker/headphones GrooveBox plays through</div></div>
+      <button class="sp-sel" id="sp-audio-output-btn" onclick="openAudioOutputMenu(event)" style="display:flex;align-items:center;gap:6px;min-width:160px;justify-content:space-between">
+        <span id="sp-audio-output-label">Default Audio Device</span>
+        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="sp-sec">About</div>
+  <div class="sp-card">
+    <div class="sp-row"><div><div class="sp-label">GrooveBox v3.2</div><div class="sp-desc">Built with Electron · Free &amp; Open Source · MIT License</div></div></div>
+    <div class="sp-row"><div><div class="sp-label">Developer</div><div class="sp-desc">Akshit Singh · akshitsingh153@gmail.com</div></div><button class="m-btn m-btn-s" style="font-size:11px;padding:5px 12px;flex-shrink:0" onclick="GB.openExternal('mailto:akshitsingh153@gmail.com')">Email</button></div>
+  </div>
+</div>
+
+<div id="ctx"></div>
+<div id="toast"></div>
+<audio id="aud"></audio>
+<script src="renderer.js"></script>
+</body>
+</html>

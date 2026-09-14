@@ -1,0 +1,152 @@
+name: Build & Release GrooveBox
+
+on:
+  push:
+    tags:
+      - 'v*'          # triggers on v3.0.0, v3.1.0, etc.
+  workflow_dispatch:   # lets you trigger manually from GitHub UI
+
+permissions:
+  contents: write      # needed to create GitHub Releases
+
+jobs:
+  # ── Build Windows ──────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows installer
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/*.exe
+          retention-days: 7
+
+  # ── Build macOS ────────────────────────────────────────────────────
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS DMG
+        run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-build
+          path: dist/*.dmg
+          retention-days: 7
+
+  # ── Build Linux ────────────────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Linux AppImage
+        run: npm run build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: dist/*.AppImage
+          retention-days: 7
+
+  # ── Create GitHub Release ──────────────────────────────────────────
+  release:
+    needs: [build-windows, build-mac, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-files
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: GrooveBox ${{ github.ref_name }}
+          body: |
+            ## GrooveBox ${{ github.ref_name }}
+
+            ### What's new
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for full details.
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | Windows 10/11 | `GrooveBox-Setup-*.exe` |
+            | macOS 12+ | `GrooveBox-*.dmg` |
+            | Linux | `GrooveBox-*.AppImage` |
+
+            ### Install on Windows
+            1. Download `GrooveBox-Setup-*.exe`
+            2. Double-click → click "More info" → "Run anyway" (Windows SmartScreen warning — safe to dismiss)
+            3. Follow installer prompts
+
+            ### Install on Mac
+            1. Download `GrooveBox-*.dmg`
+            2. Open DMG → drag GrooveBox to Applications
+            3. Right-click → Open (first time only)
+
+            ### Install on Linux
+            1. Download `GrooveBox-*.AppImage`
+            2. `chmod +x GrooveBox-*.AppImage`
+            3. `./GrooveBox-*.AppImage`
+
+            ---
+            **Free & Open Source** · MIT License
+          files: |
+            release-files/**/*.exe
+            release-files/**/*.dmg
+            release-files/**/*.AppImage
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
