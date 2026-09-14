@@ -3,9 +3,6 @@
   <h1>GrooveBox</h1>
   <p><strong>Your music. No subscription needed.</strong></p>
   <p>
-    <a href="https://github.com/akshit1503/groovebox-desktop/releases/latest">
-      <img src="https://img.shields.io/github/v/release/akshit1503/groovebox-desktop?style=flat-square&color=a78bfa&label=Latest Release">
-    </a>
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Mac%20%7C%20Linux-blue?style=flat-square&color=2dd4bf">
     <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square&color=34d399">
     <img src="https://img.shields.io/badge/price-Free%20Forever-pink?style=flat-square&color=f472b6">
