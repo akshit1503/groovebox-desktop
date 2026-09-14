@@ -14,7 +14,7 @@
 
 ---
 
-GrooveBox is a free, open-source desktop music player that plays your local files, Google Drive music, and lets you search **Spotify and YouTube Music from the same window** — with a translucent glass UI, visualizer, synced lyrics, playlists, equalizer, likes & ranking, and more.
+GrooveBox is a free, open-source desktop music player that plays your local files, Google Drive music, and lets you search **Spotify and YouTube Music from the same window** — with a translucent glass UI, visualizer, playlists, equalizer, likes & ranking, and more.
 
 ![GrooveBox desktop walkthrough](docs/desktop-demo.gif)
 
@@ -25,21 +25,24 @@ GrooveBox is a free, open-source desktop music player that plays your local file
 | 🎧 **Spotify + YouTube Music, one search box** | Search Spotify's catalog for accurate metadata, and YouTube Music for full-length streaming — both sources side by side, no switching apps |
 | 🌫 **Glass UI** | Translucent, blurred panels throughout — mini player, full player, settings |
 | 🎛 **10-Band EQ** | Real-time equalizer with reset |
-| 🎤 **Synced Lyrics** | Auto-fetched, highlights current line |
-| ♥ **Likes & Ranking** | Like tracks, see your top chart |
-| 🪟 **Mini Player** | Always-on-top with visualizer |
+| ♥ **Likes & Ranking** | Cumulative likes, medal-ranked Top Ranked view |
+| 🪟 **Mini Player** | Always-on-top compact player with visualizer |
 | 📋 **Playlists** | Unlimited, right-click to add |
-| ☁ **Google Drive** | Paste folder link, stream instantly |
+| 📜 **Queue & History** | Playing Next queue plus play history, in a side panel |
+| ☁ **Google Drive** | Paste folder link, stream instantly — no sign-in required |
 | 💾 **Persistent Library** | Add once, always there |
 | 🌊 **Live Visualizer** | Real-time frequency display |
-| ⚡ **Keyboard Shortcuts** | Full keyboard control |
+| ⏱ **Sleep timer & playback speed** | Auto-stop on a timer, 0.5×–2× speed control |
+| ⚡ **Keyboard Shortcuts** | Space, arrows, S, R, L, F, M and more |
 
 ## Screenshots
 
 | | |
 |---|---|
 | ![First-run setup](docs/screenshot-onboarding.png) | ![Library](docs/screenshot-home.png) |
-| ![Spotify + YouTube search](docs/screenshot-search.png) | ![Full player with EQ](docs/screenshot-player.png) |
+| ![Spotify + YouTube search](docs/screenshot-search.png) | ![Full player with EQ and visualizer](docs/screenshot-player.png) |
+| ![Playing Next / History queue](docs/screenshot-queue.png) | ![Playlist](docs/screenshot-playlist.png) |
+| ![Top Ranked / Liked](docs/screenshot-topranked.png) | ![Always-on-top mini player](docs/screenshot-miniplayer.png) |
 
 ## Getting your own API keys
 

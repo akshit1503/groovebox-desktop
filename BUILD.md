@@ -31,10 +31,6 @@ Files are **copied** to the app's data folder on first import. Reopen the app an
 2. Get a free API key: console.cloud.google.com → Enable Drive API → Credentials → Create API Key
 3. In GrooveBox: sidebar → "Drive Folder Link" → paste folder URL + API key → Fetch Files → Import
 
-### 🍎 Apple Music Import
-Sidebar → "Import Apple Music" → select your `Music Library.xml` file
-(Found at: Music app → File → Library → Export Library)
-
 ### 📋 Playlists
 - Click **+** next to Playlists in sidebar to create
 - Right-click any track → add to playlist
@@ -45,9 +41,10 @@ Sidebar → "Import Apple Music" → select your `Music Library.xml` file
 - 🥇🥈🥉 medals on top-3 liked tracks
 - "Top Ranked" view + "Most Liked" sort
 
-### 🎤 Lyrics
-Open Full Player (F or expand button) → "Fetch Lyrics"
-Synced lyrics auto-scroll and highlight in real time.
+### 🎧 Discover (Spotify + YouTube Music)
+Sidebar → "Discover" → search — results come from both Spotify (for accurate
+metadata) and YouTube Music (for full-length playback) in one search box.
+Requires your own free API keys — set up on first launch, or later in Settings.
 
 ### 🎛 Equalizer
 Full 10-band EQ in the Full Player.
@@ -83,13 +80,9 @@ Sidebar → "Support & Feedback" → opens your mail app addressed to the develo
 → Make sure the folder is set to "Anyone with the link can view"
 → Make sure your API key has Google Drive API enabled
 
-**Apple Music import finds 0 tracks**
-→ Export your library: Music app → File → Library → Export Library → Save as .xml
-→ Make sure the files still exist at their original paths
-
 **Mini player doesn't appear**
 → Check Windows taskbar — it may be hidden. Press M again to toggle.
 
-**Lyrics not loading**
-→ LRClib.net is used for lyrics. Check internet connection.
-→ Try editing the track name to match the exact song title.
+**Discover search returns nothing**
+→ Make sure you're in Online mode (titlebar pill, or Ctrl+O) and have entered
+a valid Spotify Client ID/Secret and/or YouTube Data API key in Settings.

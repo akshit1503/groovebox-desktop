@@ -1,7 +1,7 @@
 {
   "name": "groovebox",
   "version": "3.2.0",
-  "description": "Advanced music player with Google Drive, playlists, likes, lyrics & persistent library",
+  "description": "Advanced music player with Spotify/YouTube search, Google Drive, playlists, likes & persistent library",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
