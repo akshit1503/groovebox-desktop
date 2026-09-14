@@ -36,13 +36,7 @@ GrooveBox is a free, open-source desktop music player that plays your local file
 
 ## Screenshots
 
-<!--
-![Home](docs/screenshot-home.png)
-![Spotify + YouTube search](docs/screenshot-search.png)
-![Full player with visualizer](docs/screenshot-player.png)
-![Settings — API keys](docs/screenshot-settings.png)
--->
-*(coming soon)*
+*(coming soon — screenshots are being captured from a live walkthrough)*
 
 ## Getting your own API keys
 
