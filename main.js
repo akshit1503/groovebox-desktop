@@ -269,6 +269,25 @@ ipcMain.handle('pick-folder', async () => {
   return result;
 });
 
+// Lets a user pick any image file as a custom playlist cover — read
+// straight into a base64 data: URL (same pattern as embedded track
+// art from read-tags below) so the renderer never needs to manage a
+// separate file on disk for it.
+ipcMain.handle('pick-playlist-cover', async () => {
+  const r = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }]
+  });
+  if (r.canceled || !r.filePaths.length) return null;
+  try {
+    const fp = r.filePaths[0];
+    const buf = fs.readFileSync(fp);
+    const ext = path.extname(fp).slice(1).toLowerCase();
+    const mime = ext === 'jpg' ? 'jpeg' : ext;
+    return `data:image/${mime};base64,${buf.toString('base64')}`;
+  } catch (e) { return null; }
+});
+
 // ── Linked folders (reference in place — no copy) ─────────────────
 // For libraries too large to duplicate: the folder is only ever read,
 // never written to, moved, renamed, or deleted from. "Removing" a

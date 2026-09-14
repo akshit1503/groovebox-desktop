@@ -266,7 +266,59 @@ function updateNowPlayingLike(){
 
 // ═══════ PLAYLISTS ═══════
 const savePL=()=>GB.storeSet('playlists',playlists);
-function createPlaylist(name){const pl={id:'pl_'+Date.now(),name:(name||'').trim()||'New Playlist',keys:[]};playlists.push(pl);savePL();renderSidebar();toast(`Playlist "${pl.name}" created`);return pl;}
+function createPlaylist(name){const pl={id:'pl_'+Date.now(),name:(name||'').trim()||'New Playlist',keys:[],coverArt:null};playlists.push(pl);savePL();renderSidebar();toast(`Playlist "${pl.name}" created`);return pl;}
+
+// ── Playlist cover art ────────────────────────────────────────────
+// A track's OWN embedded art always wins; a playlist cover only fills
+// in for tracks that don't have one — same fallback behavior as the
+// Android app's TrackRow(fallbackCoverPath). Used for the currently
+// playing track wherever art shows up outside the library list itself
+// (mini player, taskbar/lock-screen media art), since there's no
+// single "current playlist" concept once a track starts playing.
+function fallbackPlaylistArt(t){
+  if(!t) return null;
+  const k=tkey(t);
+  const pl=playlists.find(p=>p.coverArt&&p.keys.includes(k));
+  return pl?pl.coverArt:null;
+}
+function resolveArt(t){ return (t&&t.image)||fallbackPlaylistArt(t)||null; }
+
+// Downscales a picked cover image before it goes into electron-store's
+// JSON file — a phone photo straight off disk can be several MB as
+// base64, which would bloat every read/write of the store.
+function resizeImageDataUrl(dataUrl,maxSize=400){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>h){if(w>maxSize){h=Math.round(h*maxSize/w);w=maxSize;}}
+      else{if(h>maxSize){w=Math.round(w*maxSize/h);h=maxSize;}}
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(c.toDataURL('image/jpeg',0.85));
+    };
+    img.onerror=()=>resolve(dataUrl);
+    img.src=dataUrl;
+  });
+}
+async function setPlaylistCover(plId){
+  const raw=await GB.pickPlaylistCover();
+  if(!raw) return;
+  const pl=playlists.find(p=>p.id===plId);
+  if(!pl) return;
+  pl.coverArt=await resizeImageDataUrl(raw,400);
+  savePL();renderSidebar();filterAndRender();
+  if(currentIdx>=0){updateNowPlaying(tracks[currentIdx]);pushMiniState();}
+  toast('✅ Playlist cover updated');
+}
+function clearPlaylistCover(plId){
+  const pl=playlists.find(p=>p.id===plId);
+  if(!pl) return;
+  pl.coverArt=null;
+  savePL();renderSidebar();filterAndRender();
+  if(currentIdx>=0){updateNowPlaying(tracks[currentIdx]);pushMiniState();}
+  toast('Cover removed');
+}
 function deletePlaylist(id){if(!confirm(`Delete playlist?`))return;playlists=playlists.filter(p=>p.id!==id);savePL();if(view==='playlist:'+id)setView('all');else renderSidebar();}
 function renamePlaylist(id,name){const pl=playlists.find(p=>p.id===id);if(pl){pl.name=(name||'').trim()||pl.name;savePL();renderSidebar();}}
 function addToPlaylist(plId,gi){const pl=playlists.find(p=>p.id===plId);const t=tracks[gi];if(!pl||!t)return;const k=tkey(t);if(!pl.keys.includes(k)){pl.keys.push(k);savePL();renderSidebar();toast(`Added to "${pl.name}"`);}else toast('Already in playlist');}
@@ -310,7 +362,10 @@ function renderSidebar(){
   const pls=document.getElementById('pl-sidebar'); if(!pls) return;
   pls.innerHTML=playlists.map(pl=>{
     const act=view==='playlist:'+pl.id;
-    return `<div class="pl-row"><button class="sb-item${act?' active':''}" data-plid="${pl.id}" data-action="open"><svg fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pl.name)}</span><span class="sb-badge">${pl.keys.length}</span></button><button class="pl-more" data-plid="${pl.id}" data-action="menu">⋯</button></div>`;
+    const icon=pl.coverArt
+      ?`<img src="${esc(pl.coverArt)}" alt="" style="width:13px;height:13px;border-radius:3px;object-fit:cover;flex-shrink:0">`
+      :`<svg fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+    return `<div class="pl-row"><button class="sb-item${act?' active':''}" data-plid="${pl.id}" data-action="open">${icon}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pl.name)}</span><span class="sb-badge">${pl.keys.length}</span></button><button class="pl-more" data-plid="${pl.id}" data-action="menu">⋯</button></div>`;
   }).join('');
 }
 
@@ -334,6 +389,8 @@ function showPlMenu(e,plId){
   showCtxMenu(e.clientX,e.clientY,[
     {label:'▶ Open',action:()=>setView('playlist:'+plId)},
     {label:'✏ Rename',action:async()=>{const n=await showPrompt('Rename playlist',pl.name);if(n)renamePlaylist(plId,n);}},
+    {label:'🖼 Set Cover',action:()=>setPlaylistCover(plId)},
+    ...(pl.coverArt?[{label:'🗑 Remove Cover',action:()=>clearPlaylistCover(plId)}]:[]),
     {label:'🗑 Delete',action:()=>deletePlaylist(plId),danger:true},
   ]);
 }
@@ -382,6 +439,10 @@ function renderList(){
   const byLike=[...tracks].sort((a,b)=>(b.likes||0)-(a.likes||0));
   const medals={};['🥇','🥈','🥉'].forEach((m,i)=>{if(byLike[i]&&(byLike[i].likes||0)>0)medals[tkey(byLike[i])]=m;});
   const inPl=view.startsWith('playlist:'),plId=inPl?view.split(':')[1]:null;
+  // Fallback cover for this playlist screen only — matches the Android
+  // app's TrackRow(fallbackCoverPath): a track's own art always wins,
+  // this only fills in for tracks that don't have one.
+  const plCover=inPl?(playlists.find(p=>p.id===plId)?.coverArt||null):null;
   list.innerHTML=filtered.map((t,i)=>{
     const gi=tracks.indexOf(t),playing=gi===currentIdx,k=tkey(t),lc=t.likes||0;
     const bCls=t.source==='gdrive'?'badge-gdrive':t.source==='jamendo'||t.source==='fma'?'badge-jamendo':'badge-local';
@@ -389,7 +450,8 @@ function renderList(){
     const ext=(t.ext||'').toLowerCase();
     const qcls=['flac','wav','aif','aiff'].includes(ext)?'lossless':['aac','m4a'].includes(ext)?'aac':'mp3';
     const medal=medals[k]||'';
-    const thumb=t.image?`<img src="${esc(t.image)}" alt="" loading="lazy" onerror="this.style.display='none'">`:`<div class="t-thumb-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
+    const art=t.image||plCover;
+    const thumb=art?`<img src="${esc(art)}" alt="" loading="lazy" onerror="this.style.display='none'">`:`<div class="t-thumb-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
     const rmBtn=inPl?`<button class="pl-remove-btn" data-plid="${plId}" data-tkey="${k}" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:3px 6px;font-size:11px;flex-shrink:0" title="Remove from playlist">✕</button>`:'';
     return `<div class="t-row${playing?' playing':''}" data-gi="${gi}">
       <div class="t-num"><span class="t-num-n">${medal||String(i+1)}</span><span class="t-eq" style="display:none"><span class="eq-b"></span><span class="eq-b"></span><span class="eq-b"></span></span></div>
@@ -929,7 +991,7 @@ let _defaultArtDataUrl=null;
   }catch(e){}
 })();
 function pickMediaArtwork(t){
-  const img=t?.image;
+  const img=resolveArt(t);
   if(img&&img.startsWith('https://'))return img;
   if(img&&img.startsWith('data:')&&img.length<60000)return img;
   return _defaultArtDataUrl;
@@ -1014,7 +1076,7 @@ function openMiniPlayer(){_lastSentImage=undefined;GB.openMini();pushMiniState()
 function pushMiniState(){
   const t=currentIdx>=0?tracks[currentIdx]:null;
   const payload={title:t?.name||'Nothing playing',sub:t?(t.source==='gdrive'?'☁ Drive':t.source==='jamendo'||t.source==='fma'?'🎵 Free':'💻 Local'):'—',quality:t?qualLabel(t):'',pct:aud.duration&&!isNaN(aud.duration)?(aud.currentTime/aud.duration)*100:0,timeCur:fmt(aud.currentTime),timeTot:fmt(aud.duration||0),playing:!aud.paused};
-  const curImage=t?.image||null;
+  const curImage=resolveArt(t);
   if(curImage!==_lastSentImage){payload.image=curImage;_lastSentImage=curImage;}
   GB.sendPlayerState(payload);
 }

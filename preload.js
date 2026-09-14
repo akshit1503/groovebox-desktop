@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('GB', {
   scanLibrary:  ()    => ipcRenderer.invoke('scan-library'),
   pickFiles:    ()    => ipcRenderer.invoke('pick-files'),
   pickFolder:   ()    => ipcRenderer.invoke('pick-folder'),
+  pickPlaylistCover: () => ipcRenderer.invoke('pick-playlist-cover'),
   removeTrack:  (p)   => ipcRenderer.invoke('remove-track', p),
   readFile:     (p)   => ipcRenderer.invoke('read-file', p),
   readTags:     (p)   => ipcRenderer.invoke('read-tags', p),
