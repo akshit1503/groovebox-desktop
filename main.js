@@ -305,25 +305,42 @@ ipcMain.handle('link-folder', async () => {
   return scanLinkedFolders();
 });
 
+// "Link Folder as Playlist" — same as link-folder (tracks stay referenced
+// in place, never copied), but also hands back which folder was just
+// picked so the renderer can create a playlist tied to it. Every track
+// scanLinkedFolders() returns is now tagged with the linked-folder root
+// it came from (see `folderPath` below), so that playlist's membership
+// is never a fixed list — it's always "whatever's currently in this
+// folder", the same self-updating design as the Android app's
+// folder-backed playlists (LibraryRepository.createFolderPlaylist).
+ipcMain.handle('link-folder-as-playlist', async () => {
+  const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+  if (r.canceled) return null;
+  const dir = path.normalize(path.resolve(r.filePaths[0]));
+  const folders = getLinkedFolders();
+  if (!folders.includes(dir)) { folders.push(dir); store.set('linkedFolders', folders); }
+  return { dir, name: path.basename(dir), tracks: scanLinkedFolders() };
+});
+
 function scanLinkedFolders() {
   const excluded = getRemovedLinkedPaths();
   const result = [];
-  const scan = d => {
+  const scan = (d, root) => {
     let entries;
     try { entries = fs.readdirSync(d); } catch (e) { return; }
     for (const f of entries) {
       const fp = path.join(d, f);
       try {
-        if (fs.statSync(fp).isDirectory()) { scan(fp); continue; }
+        if (fs.statSync(fp).isDirectory()) { scan(fp, root); continue; }
         if (!isRealAudioFile(f)) continue;
         const resolved = path.normalize(fp);
         if (excluded.has(resolved)) continue;
         const st = fs.statSync(resolved);
-        result.push({ path: resolved, name: path.basename(f, path.extname(f)), ext: path.extname(f).slice(1).toLowerCase(), size: st.size, source: 'local', linked: true, addedAt: st.birthtimeMs });
+        result.push({ path: resolved, name: path.basename(f, path.extname(f)), ext: path.extname(f).slice(1).toLowerCase(), size: st.size, source: 'local', linked: true, folderPath: root, addedAt: st.birthtimeMs });
       } catch (e) {}
     }
   };
-  for (const folder of getLinkedFolders()) scan(path.normalize(path.resolve(folder)));
+  for (const folder of getLinkedFolders()) { const root = path.normalize(path.resolve(folder)); scan(root, root); }
   return result;
 }
 ipcMain.handle('scan-linked', () => scanLinkedFolders());

@@ -462,7 +462,7 @@ body{background:var(--bg0);color:var(--text1);font-family:var(--font);overflow:h
     <button class="sb-item" id="nav-local"  onclick="setView('local')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Local Files</button>
     <button class="sb-item" id="nav-gdrive" onclick="setView('gdrive')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Google Drive</button>
     <button class="sb-item" id="nav-discover" onclick="setView('discover')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>Discover <span class="sb-badge" style="background:rgba(251,191,36,.15);color:var(--amber)">FREE</span></button>
-    <div class="sb-label"><span>Playlists</span><button onclick="promptNewPlaylist()" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:18px;padding:0;line-height:1;-webkit-app-region:no-drag">+</button></div>
+    <div class="sb-label"><span>Playlists</span><button onclick="showAddPlaylistMenu(event)" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:18px;padding:0;line-height:1;-webkit-app-region:no-drag">+</button></div>
     <div id="pl-sidebar"></div>
   </div>
   <div id="sb-bottom">

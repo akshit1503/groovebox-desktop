@@ -222,9 +222,16 @@ function applyOnlineUI(){
 
 // ═══════ TRACKS ═══════
 function addTracks(arr,save=true){
-  const keys=new Set(tracks.map(tkey));
+  const byKey=new Map(tracks.map(t=>[tkey(t),t]));
   let n=0;
-  arr.forEach(t=>{const k=tkey(t);if(keys.has(k))return;t.likes=likes[k]||0;tracks.push(t);keys.add(k);n++;});
+  arr.forEach(t=>{
+    const k=tkey(t),existing=byKey.get(k);
+    // Already-known track rescanned as part of a newly-linked folder:
+    // back-fill folderPath so it's picked up by that folder's playlist
+    // (see getPlTracks) even though it isn't a "new" track.
+    if(existing){if(t.folderPath&&!existing.folderPath)existing.folderPath=t.folderPath;return;}
+    t.likes=likes[k]||0;tracks.push(t);byKey.set(k,t);n++;
+  });
   if(save&&n>0) GB.storeSet('gdrive-meta',tracks.filter(t=>t.source==='gdrive'));
   document.getElementById('sb-cnt').textContent=tracks.length;
   return n;
@@ -320,10 +327,49 @@ function clearPlaylistCover(plId){
   toast('Cover removed');
 }
 function deletePlaylist(id){if(!confirm(`Delete playlist?`))return;playlists=playlists.filter(p=>p.id!==id);savePL();if(view==='playlist:'+id)setView('all');else renderSidebar();}
-function renamePlaylist(id,name){const pl=playlists.find(p=>p.id===id);if(pl){pl.name=(name||'').trim()||pl.name;savePL();renderSidebar();}}
-function addToPlaylist(plId,gi){const pl=playlists.find(p=>p.id===plId);const t=tracks[gi];if(!pl||!t)return;const k=tkey(t);if(!pl.keys.includes(k)){pl.keys.push(k);savePL();renderSidebar();toast(`Added to "${pl.name}"`);}else toast('Already in playlist');}
-function removeFromPlaylist(plId,k){const pl=playlists.find(p=>p.id===plId);if(pl){pl.keys=pl.keys.filter(x=>x!==k);savePL();renderSidebar();filterAndRender();}}
-function getPlTracks(plId){const pl=playlists.find(p=>p.id===plId);if(!pl)return[];return pl.keys.map(k=>tracks.find(t=>tkey(t)===k)).filter(Boolean);}
+function renamePlaylist(id,name){const pl=playlists.find(p=>p.id===id);if(pl&&!pl.folderPath){pl.name=(name||'').trim()||pl.name;savePL();renderSidebar();}}
+function addToPlaylist(plId,gi){const pl=playlists.find(p=>p.id===plId);const t=tracks[gi];if(!pl||!t)return;if(pl.folderPath){toast('This playlist follows a linked folder — tracks can\'t be added manually');return;}const k=tkey(t);if(!pl.keys.includes(k)){pl.keys.push(k);savePL();renderSidebar();toast(`Added to "${pl.name}"`);}else toast('Already in playlist');}
+function removeFromPlaylist(plId,k){const pl=playlists.find(p=>p.id===plId);if(pl&&!pl.folderPath){pl.keys=pl.keys.filter(x=>x!==k);savePL();renderSidebar();filterAndRender();}}
+// A path-prefix check, not an exact-match on a tagged folderPath field:
+// if folder A is already linked and folder B (a subfolder of A) gets
+// linked as its own playlist later, a track physically inside B can
+// legitimately get tagged folderPath=A by whichever scan visits it
+// first — exact-match would then wrongly show 0 tracks for B's
+// playlist. Comparing real paths is correct regardless of scan order.
+function normPath(p){return (p||'').replace(/\\/g,'/').toLowerCase().replace(/\/+$/,'');}
+function pathUnderFolder(filePath,folderPath){
+  const f=normPath(filePath),d=normPath(folderPath);
+  return f===d||f.startsWith(d+'/');
+}
+// A folder-backed playlist (see linkFolderAsPlaylist) has no fixed track
+// list at all — its membership is always "whatever's currently in that
+// folder", the same self-updating design as the Android app's
+// folder-backed playlists.
+function getPlTracks(plId){
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return[];
+  if(pl.folderPath) return tracks.filter(t=>t.path&&pathUnderFolder(t.path,pl.folderPath));
+  return pl.keys.map(k=>tracks.find(t=>tkey(t)===k)).filter(Boolean);
+}
+
+// ── Link folder as playlist ───────────────────────────────────────
+function showAddPlaylistMenu(e){
+  e.stopPropagation();
+  showCtxMenu(e.clientX,e.clientY,[
+    {label:'✚ New Playlist',action:()=>promptNewPlaylist()},
+    {label:'📁 Link Folder as Playlist',action:()=>linkFolderAsPlaylist()},
+  ]);
+}
+async function linkFolderAsPlaylist(){
+  const result=await GB.linkFolderAsPlaylist();
+  if(!result) return;
+  const {dir,name,tracks:linkedTracks}=result;
+  if(playlists.some(p=>p.folderPath===dir)){toast('That folder is already linked as a playlist');return;}
+  const n=addTracks(linkedTracks);
+  const pl={id:'pl_'+Date.now(),name:name||'Folder',keys:[],coverArt:null,folderPath:dir};
+  playlists.push(pl);
+  savePL();renderSidebar();filterAndRender();
+  toast(`📁 "${pl.name}" linked as a playlist (${n} track${n!==1?'s':''})`);
+}
 
 // Electron does not implement window.prompt() (it throws "prompt() is
 // not supported"), unlike alert()/confirm() which do work — so any
@@ -362,10 +408,13 @@ function renderSidebar(){
   const pls=document.getElementById('pl-sidebar'); if(!pls) return;
   pls.innerHTML=playlists.map(pl=>{
     const act=view==='playlist:'+pl.id;
+    const folderIcon=`<svg fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+    const noteIcon=`<svg fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
     const icon=pl.coverArt
       ?`<img src="${esc(pl.coverArt)}" alt="" style="width:13px;height:13px;border-radius:3px;object-fit:cover;flex-shrink:0">`
-      :`<svg fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
-    return `<div class="pl-row"><button class="sb-item${act?' active':''}" data-plid="${pl.id}" data-action="open">${icon}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pl.name)}</span><span class="sb-badge">${pl.keys.length}</span></button><button class="pl-more" data-plid="${pl.id}" data-action="menu">⋯</button></div>`;
+      :(pl.folderPath?folderIcon:noteIcon);
+    const count=pl.folderPath?getPlTracks(pl.id).length:pl.keys.length;
+    return `<div class="pl-row"><button class="sb-item${act?' active':''}" data-plid="${pl.id}" data-action="open">${icon}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pl.name)}</span><span class="sb-badge">${count}</span></button><button class="pl-more" data-plid="${pl.id}" data-action="menu">⋯</button></div>`;
   }).join('');
 }
 
@@ -388,10 +437,13 @@ function showPlMenu(e,plId){
   e.stopPropagation();const pl=playlists.find(p=>p.id===plId);if(!pl)return;
   showCtxMenu(e.clientX,e.clientY,[
     {label:'▶ Open',action:()=>setView('playlist:'+plId)},
-    {label:'✏ Rename',action:async()=>{const n=await showPrompt('Rename playlist',pl.name);if(n)renamePlaylist(plId,n);}},
+    // A folder-backed playlist's name always mirrors its linked folder's
+    // name — same as the Android app, renaming it here would just get
+    // silently overwritten by the folder name on the next scan anyway.
+    ...(pl.folderPath?[]:[{label:'✏ Rename',action:async()=>{const n=await showPrompt('Rename playlist',pl.name);if(n)renamePlaylist(plId,n);}}]),
     {label:'🖼 Set Cover',action:()=>setPlaylistCover(plId)},
     ...(pl.coverArt?[{label:'🗑 Remove Cover',action:()=>clearPlaylistCover(plId)}]:[]),
-    {label:'🗑 Delete',action:()=>deletePlaylist(plId),danger:true},
+    {label:pl.folderPath?'🗑 Unlink':'🗑 Delete',action:()=>deletePlaylist(plId),danger:true},
   ]);
 }
 
@@ -439,10 +491,14 @@ function renderList(){
   const byLike=[...tracks].sort((a,b)=>(b.likes||0)-(a.likes||0));
   const medals={};['🥇','🥈','🥉'].forEach((m,i)=>{if(byLike[i]&&(byLike[i].likes||0)>0)medals[tkey(byLike[i])]=m;});
   const inPl=view.startsWith('playlist:'),plId=inPl?view.split(':')[1]:null;
+  const viewingPl=inPl?playlists.find(p=>p.id===plId):null;
   // Fallback cover for this playlist screen only — matches the Android
   // app's TrackRow(fallbackCoverPath): a track's own art always wins,
   // this only fills in for tracks that don't have one.
-  const plCover=inPl?(playlists.find(p=>p.id===plId)?.coverArt||null):null;
+  const plCover=viewingPl?.coverArt||null;
+  // A folder-backed playlist's membership isn't a manual list — nothing
+  // to "remove from playlist" independent of the folder itself.
+  const canRemoveFromPl=inPl&&!viewingPl?.folderPath;
   list.innerHTML=filtered.map((t,i)=>{
     const gi=tracks.indexOf(t),playing=gi===currentIdx,k=tkey(t),lc=t.likes||0;
     const bCls=t.source==='gdrive'?'badge-gdrive':t.source==='jamendo'||t.source==='fma'?'badge-jamendo':'badge-local';
@@ -452,7 +508,7 @@ function renderList(){
     const medal=medals[k]||'';
     const art=t.image||plCover;
     const thumb=art?`<img src="${esc(art)}" alt="" loading="lazy" onerror="this.style.display='none'">`:`<div class="t-thumb-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
-    const rmBtn=inPl?`<button class="pl-remove-btn" data-plid="${plId}" data-tkey="${k}" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:3px 6px;font-size:11px;flex-shrink:0" title="Remove from playlist">✕</button>`:'';
+    const rmBtn=canRemoveFromPl?`<button class="pl-remove-btn" data-plid="${plId}" data-tkey="${k}" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:3px 6px;font-size:11px;flex-shrink:0" title="Remove from playlist">✕</button>`:'';
     return `<div class="t-row${playing?' playing':''}" data-gi="${gi}">
       <div class="t-num"><span class="t-num-n">${medal||String(i+1)}</span><span class="t-eq" style="display:none"><span class="eq-b"></span><span class="eq-b"></span><span class="eq-b"></span></span></div>
       <div class="t-thumb">${thumb}</div>
@@ -491,7 +547,7 @@ function closeCtxMenu(){const el=document.getElementById('ctx');if(el)el.style.d
 
 function onRowCtx(e,gi){
   e.preventDefault();e.stopPropagation();
-  const plItems=playlists.map(pl=>({label:`+ "${pl.name}"`,action:()=>addToPlaylist(pl.id,gi)}));
+  const plItems=playlists.filter(pl=>!pl.folderPath).map(pl=>({label:`+ "${pl.name}"`,action:()=>addToPlaylist(pl.id,gi)}));
   showCtxMenu(e.clientX,e.clientY,[
     {label:'▶ Play now',action:()=>loadTrack(gi)},
     {label:'⏭ Play next',action:()=>{queueNext_.unshift(gi);renderQueue();toast(`"${tracks[gi]?.name}" will play next`);}},

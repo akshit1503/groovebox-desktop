@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('GB', {
   // Linked folders (reference in place, no copy — for libraries too
   // large to duplicate onto disk)
   linkFolder: ()    => ipcRenderer.invoke('link-folder'),
+  linkFolderAsPlaylist: () => ipcRenderer.invoke('link-folder-as-playlist'),
   scanLinked: ()    => ipcRenderer.invoke('scan-linked'),
   // Store
   storeGet: (k)    => ipcRenderer.invoke('store-get', k),
